@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CURRICULUM } from "./typing.js";
+import { capForCode, niqqudById } from "./layout.js";
 import { emptyProgress, pickNext, gradeAttempt, shouldUnlock } from "./typing.js";
 import { scoreAnswer } from "../../shared/progression.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
@@ -28,6 +29,11 @@ export function useTyping() {
   const [result, setResult] = useState(null);   // { correct, marks }
   const [positionMode, setPositionMode] = useState(false);
   const [os, setOs] = useState(() => saved?.os ?? detectOs());
+  /* point character -> { cap, shift }, observed from real keystrokes. Published
+     charts for this layer have been wrong twice, so what you actually press
+     wins over what a table claims. Keyed by platform. */
+  const [learned, setLearned] = useState(() => saved?.learned ?? {});
+  const lastKey = useRef(null);
 
   const progressRef = useRef(progress);
   const lastIdRef = useRef(null);
@@ -58,8 +64,8 @@ export function useTyping() {
   useEffect(() => () => clearTimeout(advanceTimer.current), []);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, best: session.best, os });
-  }, [progress, session.best, os]);
+    saveSlice(SLICE, { progress, best: session.best, os, learned });
+  }, [progress, session.best, os, learned]);
 
   const settle = useCallback((correct, marks) => {
     const item = card.item;
@@ -100,15 +106,32 @@ export function useTyping() {
 
   /* Evaluate as soon as the attempt is as long as the target — typing trainers
      shouldn't need a submit key. */
+  const noteKey = useCallback((e) => {
+    lastKey.current = { cap: capForCode(e.code), shift: e.shiftKey };
+  }, []);
+
   const change = useCallback((raw) => {
     if (result || !card) return;
     const target = card.prompt;
+
+    /* If this keystroke added a point, remember which key produced it. */
+    const added = [...raw].filter((ch, i) => [...value][i] !== ch);
+    const point = added.find((ch) => niqqudById.has(ch));
+    const pressed = lastKey.current;
+    if (point && pressed?.cap) {
+      setLearned((prev) => {
+        const forOs = prev[os] ?? {};
+        if (forOs[point]?.cap === pressed.cap && forOs[point]?.shift === pressed.shift) return prev;
+        return { ...prev, [os]: { ...forOs, [point]: { cap: pressed.cap, shift: pressed.shift } } };
+      });
+    }
+
     setValue(raw);
     if ([...raw].length < [...target].length) return;
     const graded = gradeAttempt(raw, target);
     if (graded.positionMode) setPositionMode(true);
     settle(graded.correct, graded.marks);
-  }, [card, result, settle]);
+  }, [card, result, settle, value, os]);
 
   const next = useCallback(() => { clearTimeout(advanceTimer.current); deal(); }, [deal]);
 
@@ -142,6 +165,7 @@ export function useTyping() {
 
   return {
     card, value, result, progress, session, positionMode, os, setOs,
+    learned: learned[os] ?? {}, noteKey,
     inputRef, change, next, unlockNext, resetAll,
   };
 }

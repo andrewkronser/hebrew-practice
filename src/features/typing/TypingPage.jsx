@@ -47,7 +47,7 @@ export default function TypingPage() {
           <Text size="sm" c="dimmed" ta="center" mih="1.5em">
             {isIntro ? (
               item.point
-                ? <>{item.name} — <Kbd>{niqqudHint(item.he, t.os)}</Kbd> after the letter</>
+                ? <>{item.name} — <Kbd>{niqqudHint(item.he, t.os, t.learned)}</Kbd> after the letter</>
                 : <>on <Kbd>{item.key.toUpperCase()}</Kbd> — type it once</>
             ) : item.word ? (
               <>{item.gloss} — type the whole word</>
@@ -62,6 +62,7 @@ export default function TypingPage() {
             ref={t.inputRef}
             value={t.value}
             onChange={(e) => t.change(e.currentTarget.value)}
+            onKeyDown={t.noteKey}
             readOnly={Boolean(t.result)}
             dir="rtl"
             variant="unstyled"
@@ -88,7 +89,7 @@ export default function TypingPage() {
                     {" is "}
                     {[...prompt].map((ch, i) => (
                       <Kbd key={i} ml={4}>
-                        {keyFor(ch)?.toUpperCase() ?? niqqudHint(ch, t.os) ?? "?"}
+                        {keyFor(ch)?.toUpperCase() ?? niqqudHint(ch, t.os, t.learned) ?? "?"}
                       </Kbd>
                     ))}
                     {" — "}<Kbd>Enter</Kbd> to continue
@@ -129,7 +130,7 @@ export default function TypingPage() {
         </Group>
       </Group>
 
-      <KeyboardMap unlockedChars={known} target={prompt} os={t.os} />
+      <KeyboardMap unlockedChars={known} target={prompt} os={t.os} learned={t.learned} />
 
       <Text size="xs" c="dimmed" lh={1.6}>
         Graded on the character produced, not the key pressed, so it works with whatever

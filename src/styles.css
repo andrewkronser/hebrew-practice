@@ -94,7 +94,7 @@
   justify-content: center;
   gap: 1px;
   width: 42px;
-  height: 44px;
+  height: 48px;
   flex: 0 0 auto;
   border: 1px solid var(--mantine-color-default-border);
   border-bottom-width: 2px;
@@ -121,6 +121,17 @@
   .kbd-cap { font-size: 0.5rem; }
 }
 
-/* Niqqud chips in the keyboard reference */
-.kbd-point { width: 46px; }
-.kbd-point .kbd-cap { font-size: 0.55rem; letter-spacing: 0.02em; }
+/* Niqqud drawn on the key they actually live on */
+.kbd-key { position: relative; }
+.kbd-niqqud {
+  position: absolute;
+  top: 2px;
+  inset-inline-end: 3px;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--mantine-color-tekhelet-6);
+  border: 1px dotted var(--mantine-color-tekhelet-6);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.kbd-niqqud.kbd-seen { border-style: solid; }

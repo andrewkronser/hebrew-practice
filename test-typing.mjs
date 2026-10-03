@@ -54,10 +54,10 @@ check("prompt glyph present", Boolean(txt(".glyph")), true);
 check("typing field present", Boolean(field()), true);
 
 console.log("── keyboard reference ──");
-check("keyboard rendered", doc.querySelectorAll(".kbd-key").length, 31);
+check("full keyboard rendered", doc.querySelectorAll(".kbd-key").length, 47);
 check("one key highlighted", doc.querySelectorAll(".kbd-active").length, 1);
 check("most keys still locked", doc.querySelectorAll(".kbd-locked").length, 26);
-check("no niqqud strip before points unlock", doc.querySelectorAll(".kbd-point").length, 0);
+check("no points drawn before any unlock", doc.querySelectorAll(".kbd-niqqud").length, 0);
 check("layout named", rendered().includes("SI-1452"), true);
 
 console.log("── first key is kaf on F ──");
@@ -112,7 +112,7 @@ check("still rendering a prompt", Boolean(txt(".glyph")), true);
 console.log("── reaching the niqqud stage ──");
 /* Skip ahead with the unlock control; each unlock shows an intro to clear. */
 for (let i = 0; i < 40; i++) {
-  if (doc.querySelectorAll(".kbd-point").length) break;
+  if (doc.querySelectorAll(".kbd-niqqud").length) break;
   const unlock = [...doc.querySelectorAll("button")].find((b) => b.textContent.trim() === "Unlock the next one");
   if (!unlock) break;
   click(unlock);
@@ -120,8 +120,9 @@ for (let i = 0; i < 40; i++) {
   const g = txt(".glyph") ?? txt(".glyph-word");
   if (g) { type(g); await tick(60); await tick(620); }
 }
-check("niqqud strip appears", doc.querySelectorAll(".kbd-point").length > 0, true);
-check("strip labelled with a modifier", /AltGr|⌥/.test(rendered()), true);
+check("points appear on their keys", doc.querySelectorAll(".kbd-niqqud").length > 0, true);
+check("modifier named", /AltGr|⌥/.test(rendered()), true);
+check("unconfirmed points are marked", doc.querySelectorAll(".kbd-niqqud:not(.kbd-seen)").length > 0, true);
 
 /* Drill until a point comes up, then confirm the prompt is a real cluster. */
 let sawPoint = false, pointPrompt = null;
@@ -134,6 +135,31 @@ for (let i = 0; i < 60; i++) {
 }
 check("a point was drilled on a cluster", sawPoint, true);
 check("cluster is letter + point, never a bare point", pointPrompt && /^[\u05D0-\u05EA][\u05B0-\u05C2]$/.test(pointPrompt), true);
+
+console.log("── the map learns from real keystrokes ──");
+/* Drill until a point prompt appears, then type it while reporting a physical
+   key that disagrees with the published chart. The map should adopt ours. */
+let learnedOk = null;
+for (let i = 0; i < 80; i++) {
+  const g = txt(".glyph") ?? txt(".glyph-word");
+  if (!g) break;
+  const pt = [...g].find((ch) => /[\u05B0-\u05C2]/.test(ch));
+  if (pt) {
+    const el = field();
+    /* keydown carries the physical key; the input event carries the character. */
+    el.dispatchEvent(new w.KeyboardEvent("keydown", { code: "Backquote", bubbles: true }));
+    type(g);
+    await tick(80);
+    const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:typing") || "null");
+    const forOs = slice?.learned?.[slice?.os] ?? {};
+    learnedOk = forOs[pt]?.cap;
+    break;
+  }
+  type(g); await tick(60); await tick(620);
+}
+check("a keystroke was recorded for a point", learnedOk, "`");
+await tick(700);
+check("learned key is drawn as confirmed", doc.querySelectorAll(".kbd-niqqud.kbd-seen").length > 0, true);
 
 console.log("── platform toggle ──");
 const seg = (label) => [...doc.querySelectorAll("label")].find((l) => l.textContent.trim() === label);

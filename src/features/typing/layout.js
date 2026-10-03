@@ -11,20 +11,23 @@
    across platforms. If that's the one you want, it drops in here as a second
    ROWS/ORDER pair and nothing else changes.
 
-   Niqqud sit on a modifier layer and differ by platform, so both are below.
+   Niqqud sit on a modifier layer and differ by platform.
 
-   Windows (SI-1452 layer 3, AltGr): taken from the published standard draft,
-   which lists each point by the Hebrew letter on its key; translated here
-   through the letter table above. It agrees with Microsoft's own table on 9 of
-   14, and every disagreement is Microsoft's bottom row shifted one place right
-   — the same extraction fault already seen on the top row — so the standard is
-   followed.
+   macOS (⌥): verified on a real Mac, not taken from a chart. Two published
+   sources disagreed and both were wrong — one put sheva on ⌥; and holam on ⌥0,
+   the other holam on ⌥O; it is actually ⌥=. The number row runs ⌥1-⌥9 through
+   hataf-patah, hataf-qamats, hataf-segol, hiriq, tsere, patah, qamats, qubuts,
+   segol, with sheva on ⌥0, and holam, dagesh, shin dot and sin dot off the row
+   on =, comma, A and M.
 
-   macOS (⌥): the number row runs 1-0 through hataf-patah, hataf-qamats,
-   hataf-segol, hiriq, tsere, patah, qamats, qubuts, segol, holam, with sheva
-   and dagesh off to the side. A second source put sheva on ⌥0, holam on ⌥O and
-   dagesh on ⌥~; the sequential run is the more systematic account and is used
-   here. Those three are the least certain cells in this file.
+   The trainer still watches which physical key actually produces each point and
+   prefers what it sees over this table, which is how these values were found.
+
+      Windows (SI-1452 layer 3, AltGr): from the published standard draft, which
+   lists each point by the Hebrew letter on its key, translated through the
+   letter table above. It agrees with Microsoft's own table on 9 of 14; every
+   disagreement is Microsoft's bottom row shifted one place right, the same
+   extraction fault already seen on the top row.
 
    None of this gates the trainer: answers are graded on the character produced,
    so a wrong hint costs you one hunt for a key, not a wrong answer. */
@@ -34,10 +37,18 @@ export const LAYOUT_NAME = "Hebrew (Standard) — SI-1452";
 /** Physical rows, left to right. `key` is the QWERTY cap, `he` what it types. */
 export const ROWS = [
   [
+    { key: "`", he: "`" }, { key: "1", he: "1" }, { key: "2", he: "2" },
+    { key: "3", he: "3" }, { key: "4", he: "4" }, { key: "5", he: "5" },
+    { key: "6", he: "6" }, { key: "7", he: "7" }, { key: "8", he: "8" },
+    { key: "9", he: "9" }, { key: "0", he: "0" }, { key: "-", he: "-" },
+    { key: "=", he: "=" },
+  ],
+  [
     { key: "q", he: "/" }, { key: "w", he: "'" }, { key: "e", he: "ק" },
     { key: "r", he: "ר" }, { key: "t", he: "א" }, { key: "y", he: "ט" },
     { key: "u", he: "ו" }, { key: "i", he: "ן" }, { key: "o", he: "ם" },
-    { key: "p", he: "פ" },
+    { key: "p", he: "פ" }, { key: "[", he: "]" }, { key: "]", he: "[" },
+    { key: "\\", he: "\\" },
   ],
   [
     { key: "a", he: "ש" }, { key: "s", he: "ד" }, { key: "d", he: "ג" },
@@ -101,27 +112,53 @@ export const FINAL_FORMS = new Set(["ך", "ם", "ן", "ף", "ץ"]);
    Ordered by how often a beginner meets them. */
 
 export const NIQQUD = [
-  { id: "n-patah",   he: "\u05B7", name: "patah",        win: "p",  mac: "6" },
-  { id: "n-qamats",  he: "\u05B8", name: "qamats",       win: "e",  mac: "7" },
-  { id: "n-segol",   he: "\u05B6", name: "segol",        win: "x",  mac: "9" },
-  { id: "n-tsere",   he: "\u05B5", name: "tsere",        win: "m",  mac: "5" },
-  { id: "n-hiriq",   he: "\u05B4", name: "hiriq",        win: "j",  mac: "4" },
-  { id: "n-holam",   he: "\u05B9", name: "holam",        win: "u",  mac: "0" },
-  { id: "n-sheva",   he: "\u05B0", name: "sheva",        win: "a",  mac: ";" },
-  { id: "n-dagesh",  he: "\u05BC", name: "dagesh",       win: "s",  mac: "," },
-  { id: "n-qubuts",  he: "\u05BB", name: "qubuts",       win: "\\", mac: "8" },
-  { id: "n-shin",    he: "\u05C1", name: "shin dot",     win: "w",  mac: "\u21E7;" },
-  { id: "n-sin",     he: "\u05C2", name: "sin dot",      win: "q",  mac: "\u21E7'" },
-  { id: "n-hpatah",  he: "\u05B2", name: "hataf patah",  win: "[",  mac: "1" },
-  { id: "n-hqamats", he: "\u05B3", name: "hataf qamats", win: "r",  mac: "2" },
-  { id: "n-hsegol",  he: "\u05B1", name: "hataf segol",  win: "c",  mac: "3" },
+  { id: "n-patah",   he: "\u05B7", name: "patah",        win: "p",  mac: "6", confident: true },
+  { id: "n-qamats",  he: "\u05B8", name: "qamats",       win: "e",  mac: "7", confident: true },
+  { id: "n-segol",   he: "\u05B6", name: "segol",        win: "x",  mac: "9", confident: true },
+  { id: "n-tsere",   he: "\u05B5", name: "tsere",        win: "m",  mac: "5", confident: true },
+  { id: "n-hiriq",   he: "\u05B4", name: "hiriq",        win: "j",  mac: "4", confident: true },
+  { id: "n-holam",   he: "\u05B9", name: "holam",        win: "u",  mac: "=", confident: true },
+  { id: "n-sheva",   he: "\u05B0", name: "sheva",        win: "a",  mac: "0", confident: true },
+  { id: "n-dagesh",  he: "\u05BC", name: "dagesh",       win: "s",  mac: ",", confident: true },
+  { id: "n-qubuts",  he: "\u05BB", name: "qubuts",       win: "\\", mac: "8", confident: true },
+  { id: "n-shin",    he: "\u05C1", name: "shin dot",     win: "w",  mac: "a", confident: true },
+  { id: "n-sin",     he: "\u05C2", name: "sin dot",      win: "q",  mac: "m", confident: true },
+  { id: "n-hpatah",  he: "\u05B2", name: "hataf patah",  win: "[",  mac: "1", confident: true },
+  { id: "n-hqamats", he: "\u05B3", name: "hataf qamats", win: "r",  mac: "2", confident: true },
+  { id: "n-hsegol",  he: "\u05B1", name: "hataf segol",  win: "c",  mac: "3", confident: true },
 ];
+
+/* KeyboardEvent.code -> the cap printed on the key. */
+const CODE_CAPS = {
+  Backquote: "`", Minus: "-", Equal: "=", BracketLeft: "[", BracketRight: "]",
+  Backslash: "\\", Semicolon: ";", Quote: "'", Comma: ",", Period: ".", Slash: "/",
+};
+export function capForCode(code) {
+  if (!code) return null;
+  if (CODE_CAPS[code]) return CODE_CAPS[code];
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase();
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  return null;
+}
 
 export const niqqudById = new Map(NIQQUD.map((n) => [n.he, n]));
 
-/** Key hint for the chosen platform, as a printable combo. */
-export function niqqudHint(point, os) {
+/** Which cap a point sits on: what we saw you press, else the published guess. */
+export function niqqudKey(point, os, learned = {}) {
   const n = niqqudById.get(point);
   if (!n) return null;
-  return os === "mac" ? `\u2325${n.mac.toUpperCase()}` : `AltGr+${n.win.toUpperCase()}`;
+  const seen = learned[point];
+  if (seen) return { cap: seen.cap, shift: Boolean(seen.shift), observed: true };
+  const cap = os === "mac" ? n.mac : n.win;
+  const shift = os === "mac" ? Boolean(n.macShift) : false;
+  return { cap, shift, observed: false, confident: n.confident };
+}
+
+/** Printable combo for the chosen platform. */
+export function niqqudHint(point, os, learned = {}) {
+  const k = niqqudKey(point, os, learned);
+  if (!k) return null;
+  const mod = os === "mac" ? "\u2325" : "AltGr+";
+  const shift = k.shift ? (os === "mac" ? "\u21E7" : "Shift+") : "";
+  return `${mod}${shift}${k.cap.toUpperCase()}`;
 }
