@@ -1,7 +1,10 @@
 /* Guards the character data. The accent U+05AB once slipped into 20 vocabulary
    words and rendered as tofu, because Frank Ruhl Libre has no glyph for it. */
 import { WORD_BANK } from "./src/features/vocabulary/data.js";
-import { glossOrder, buildQuestion, advanceCursor } from "./src/features/vocabulary/quiz.js";
+import {
+  glossOrder, buildQuestion, buildReverseQuestion, advanceCursor, normalizeGloss,
+  promptableGlosses, OPTION_COUNT,
+} from "./src/features/vocabulary/quiz.js";
 import { FORMS, CELLS, SEED_SIZE, isCorrectCell } from "./src/features/gender-number/data.js";
 import { pickForm, correctCells, engine, PACING } from "./src/features/gender-number/drill.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
@@ -105,6 +108,40 @@ for (let i = 0; i < glossOrder(adam.glosses.length).length; i++) {
 check("a full cycle covers every sense of אדם", new Set(seen).size, adam.glosses.length);
 check("primary appears most in that cycle",
   seen.filter((g) => g === adam.glosses[0]).length, seen.length / 2);
+
+console.log("── the reverse direction is unambiguous ──");
+/* Reversed, the prompt is an English sense and every word carrying that sense
+   would be a correct answer — a sharper version of the forward collision. */
+let rBuilds = 0, rAmbiguous = 0, rDupes = 0, rShort = 0;
+for (const unlocked of [4, 8, 20, 65]) {
+  for (let i = 0; i < unlocked; i++) {
+    const word = WORD_BANK[i];
+    const senses = promptableGlosses(word);
+    for (let g = 0; g < senses.length; g++) {
+      for (let rep = 0; rep < 12; rep++) {
+        const r = buildReverseQuestion(word, unlocked, { [word.id]: g });
+        rBuilds++;
+        if (r.options.length !== OPTION_COUNT) rShort++;
+        const texts = r.options.map((o) => o.text);
+        if (new Set(texts).size !== texts.length) rDupes++;
+        const defensible = r.options.filter((o) =>
+          o.word.glosses.some((x) => normalizeGloss(x) === normalizeGloss(r.prompt)));
+        if (defensible.length !== 1) rAmbiguous++;
+      }
+    }
+  }
+}
+console.log(`   ${rBuilds} reverse questions built`);
+check("exactly one defensible answer each", rAmbiguous, 0);
+check("always four options", rShort, 0);
+check("no repeated Hebrew option", rDupes, 0);
+/* "god" and "God" collapse to one prompt, so a word listing both must not ask
+   the same reversed question twice. */
+const dupPrompts = WORD_BANK.filter((w) => {
+  const n = promptableGlosses(w).map(normalizeGloss);
+  return new Set(n).size !== n.length;
+}).map((w) => w.key);
+check("no word asks the same reversed prompt twice", dupPrompts.join(",") || "none", "none");
 
 console.log("── vocabulary transliteration ──");
 const noTr = WORD_BANK.filter((w) => !w.tr).map((w) => w.key);

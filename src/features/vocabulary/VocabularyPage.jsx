@@ -1,5 +1,8 @@
-import { Badge, Box, Button, Divider, Group, Paper, Stack, Switch, Text, Title } from "@mantine/core";
+import {
+  Badge, Box, Button, Divider, Group, Paper, SegmentedControl, Stack, Switch, Text, Title,
+} from "@mantine/core";
 import { useVocabulary } from "./useVocabulary.js";
+import { DIRECTIONS } from "./quiz.js";
 import { WordBank } from "./components/WordBank.jsx";
 import { StatsTape } from "../transliteration/components/ProgressGrid.jsx";
 
@@ -18,6 +21,14 @@ export default function VocabularyPage() {
           onChange={(e) => v.setShowTranslit(e.currentTarget.checked)}
         />
       </Group>
+
+      <SegmentedControl
+        size="xs"
+        value={v.direction}
+        onChange={v.changeDirection}
+        data={Object.values(DIRECTIONS).map((d) => ({ label: d.label, value: d.id }))}
+        aria-label="Quiz direction"
+      />
 
       <Paper withBorder radius="lg" p="xl" shadow="sm">
         {v.card.kind === "intro" ? (
@@ -44,7 +55,7 @@ export default function VocabularyPage() {
 
       <Box mt="md">
         <WordBank
-          progress={v.progress}
+          progress={v.view}
           disabled={v.disabled}
           onToggle={v.toggleWord}
           onEnableAll={v.enableAll}
@@ -56,7 +67,9 @@ export default function VocabularyPage() {
       <Text size="xs" c="dimmed" lh={1.6}>
         Press 1–4 to answer, Enter to move on. Each question shows one sense of the
         word — the first meaning comes up about half the time, with the others
-        rotating through the rest. Click any word below to stop practising it.
+        rotating through the rest. Each direction keeps its own strengths, since
+        recognising a word and producing it are different skills. Click any word
+        below to stop practising it.
       </Text>
     </Stack>
   );
@@ -88,17 +101,25 @@ function Introduction({ word, onContinue }) {
 }
 
 function Question({ question, result, showTranslit, onAnswer, onNext }) {
-  const { word, options, answer } = question;
+  const { word, options, answer, reverse } = question;
 
   return (
     <Stack gap="md" align="center">
       <Stack gap={2} align="center">
-        <Box className="hebrew glyph-word" dir="rtl">{word.he}</Box>
-        {/* Reserve the line either way, so switching the hint on doesn't
-            shift the options under the cursor mid-question. */}
-        <Text className="translit" c="dimmed" fz="lg" mih="1.6em">
-          {showTranslit ? word.tr : "\u00A0"}
-        </Text>
+        {reverse ? (
+          /* English prompt: the sense being asked for, nothing else, so the
+             Hebrew is never on screen before you have answered. */
+          <Text fz={34} fw={600} ta="center" lh={1.25}>{question.prompt}</Text>
+        ) : (
+          <>
+            <Box className="hebrew glyph-word" dir="rtl">{word.he}</Box>
+            {/* Reserve the line either way, so switching the hint on doesn't
+                shift the options under the cursor mid-question. */}
+            <Text className="translit" c="dimmed" fz="lg" mih="1.6em">
+              {showTranslit ? word.tr : "\u00A0"}
+            </Text>
+          </>
+        )}
       </Stack>
 
       <Stack gap="xs" w="100%" maw={420}>
@@ -120,11 +141,16 @@ function Question({ question, result, showTranslit, onAnswer, onNext }) {
               onClick={() => onAnswer(opt)}
               disabled={Boolean(result) && !opt.correct && !chosen}
               styles={{ label: { whiteSpace: "normal", textAlign: "left" } }}
-              leftSection={
-                <Text size="xs" c="dimmed" w={14} ta="center">{i + 1}</Text>
-              }
+              leftSection={<Text size="xs" c="dimmed" w={14} ta="center">{i + 1}</Text>}
             >
-              {opt.text}
+              {reverse ? (
+                <Group gap="sm" align="baseline" wrap="nowrap">
+                  <Box component="span" className="hebrew" fz="xl" dir="rtl">{opt.text}</Box>
+                  {showTranslit && (
+                    <Text span className="translit" size="sm" c="dimmed">{opt.word.tr}</Text>
+                  )}
+                </Group>
+              ) : opt.text}
             </Button>
           );
         })}
@@ -142,11 +168,11 @@ function Question({ question, result, showTranslit, onAnswer, onNext }) {
               {" "}
               <Text span className="translit" c="dimmed">{word.tr}</Text>
               {" — "}
-              <Text span fw={600}>{answer}</Text>
+              <Text span fw={600}>{reverse ? question.prompt : answer}</Text>
             </Text>
             {word.glosses.length > 1 && (
               <Text size="xs" c="dimmed" ta="center">
-                also: {word.glosses.filter((g) => g !== answer).join(", ")}
+                also: {word.glosses.filter((g) => g !== (reverse ? question.prompt : answer)).join(", ")}
               </Text>
             )}
             <Button mt="xs" onClick={onNext}>Next</Button>

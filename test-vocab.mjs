@@ -119,9 +119,7 @@ await tick();
 check("bank grew by one", doc.querySelectorAll(".bank-cell").length, before + 1);
 
 console.log("\n── transliteration hint ──");
-const switchBox = () => [...doc.querySelectorAll("input[type=checkbox]")]
-  .find((i) => i.closest("label")?.textContent.includes("Transliteration"))
-  ?? doc.querySelector("input[type=checkbox]");
+const switchBox = () => doc.querySelector("input[type=checkbox]");
 check("hint switch present", Boolean(switchBox()), true);
 check("hint off by default", switchBox().checked, false);
 /* With the hint off, the prompt's transliteration must not be on screen. */
@@ -181,6 +179,48 @@ click(restore);
 await tick();
 check("restoring brings the drill back", optionButtons().length, 4);
 check("nothing left greyed", doc.querySelectorAll(".bank-cell.bank-off").length, 0);
+
+console.log("\n── the reverse direction ──");
+const dirRadio = (v) => [...doc.querySelectorAll("input[type=radio]")].find((r) => r.value === v);
+check("direction control present", Boolean(dirRadio("en-he")), true);
+/* Word-bank cells are buttons containing Hebrew too, so count only the
+   Hebrew inside actual answer buttons. */
+const hebrewOptions = () => optionButtons().filter((b) => b.querySelector(".hebrew"));
+check("forward mode shows Hebrew as the prompt", Boolean(txt(".glyph-word")), true);
+check("forward mode options are English", hebrewOptions().length, 0);
+
+dirRadio("en-he").click();
+await tick();
+check("reverse mode drops the Hebrew prompt", doc.querySelector(".glyph-word"), null);
+check("reverse mode offers four Hebrew options", hebrewOptions().length, 4);
+check("still four buttons", optionButtons().length, 4);
+
+/* The prompt must not appear among the options as plain text, and no two
+   options may repeat. */
+const optTexts = optionButtons().map((b) => b.textContent.trim());
+check("no duplicate options", new Set(optTexts).size, optTexts.length);
+
+click(optionButtons()[0]);
+await tick();
+check("reverse answer is graded", /Correct|Not quite/.test(rendered()), true);
+check("reveal shows the Hebrew", rendered().includes("—"), true);
+click(btn("Next"));
+await tick();
+check("reverse deals again", hebrewOptions().length, 4);
+
+console.log("\n── each direction keeps its own strengths ──");
+const sliceD = JSON.parse(w.localStorage.getItem("hebrew-practice:vocabulary") || "null");
+check("stats are split by direction",
+  Object.keys(sliceD?.progress?.stats ?? {}).sort().join(","), "en-he,he-en");
+check("direction persisted", sliceD?.direction, "en-he");
+check("reverse answers scored into en-he",
+  Object.keys(sliceD.progress.stats["en-he"]).length > 0, true);
+check("forward scores untouched by reverse answers",
+  Object.keys(sliceD.progress.stats["he-en"]).length > 0, true);
+
+dirRadio("he-en").click();
+await tick();
+check("switching back restores the forward drill", Boolean(txt(".glyph-word")), true);
 
 console.log("\n── persistence ──");
 const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:vocabulary") || "null");

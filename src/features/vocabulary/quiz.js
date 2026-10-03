@@ -9,7 +9,9 @@
 
    2. Several nouns in the bank share a sense. If אָדָם comes up with "people"
       as its correct answer and עַם is offered as a distractor, both options are
-      right and the question is broken. Pairs that share a gloss string are
+      right and the question is broken. Reversed, the same collision bites
+      harder: the prompt "people" is answerable by both אָדָם and עַם, so the
+      wrong one has to be kept off the board. Pairs that share a gloss string are
       derived below; pairs that are near-synonyms without sharing a string are
       listed by hand in data.js. Either way the conflicting word is barred from
       the distractor pool for that question. */
@@ -61,6 +63,37 @@ export function allConflictPairs() {
 
 export const OPTION_COUNT = 4;
 
+export const DIRECTIONS = {
+  "he-en": { id: "he-en", label: "Hebrew → English" },
+  "en-he": { id: "en-he", label: "English → Hebrew" },
+};
+
+/* "god" and "God" normalize to one prompt, so a word listing both would ask the
+   same reversed question twice. Distinct senses only, first occurrence kept. */
+export function promptableGlosses(word) {
+  const seen = new Set();
+  return word.glosses.filter((g) => {
+    const k = normalizeGloss(g);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** Words that may stand beside this one without also being a defensible answer. */
+function eligibleDistractors(word, unlocked) {
+  const banned = new Set(conflictsWith(word.id));
+  banned.add(word.id);
+  const ok = (w) => !banned.has(w.id);
+  /* Unlocked words first, topped up from the rest of the bank when the unlocked
+     pool is too small or too conflict-heavy — which it always is at the start,
+     with only four words in rotation. */
+  return [
+    ...shuffled(activeItems(WORD_BANK, unlocked).filter(ok)),
+    ...shuffled(WORD_BANK.slice(unlocked).filter(ok)),
+  ];
+}
+
 /**
  * Build one question.
  *   word     the prompt word
@@ -76,16 +109,9 @@ export function buildQuestion(word, unlocked, cursors = {}) {
   const glossIndex = schedule[(cursors[word.id] ?? 0) % schedule.length];
   const answer = word.glosses[glossIndex];
 
-  const banned = new Set(conflictsWith(word.id));
-  banned.add(word.id);
-  const eligible = (w) => !banned.has(w.id);
-
-  const unlockedPool = shuffled(activeItems(WORD_BANK, unlocked).filter(eligible));
-  const lockedPool = shuffled(WORD_BANK.slice(unlocked).filter(eligible));
-
   const taken = new Set([normalizeGloss(answer)]);
   const distractors = [];
-  for (const candidate of [...unlockedPool, ...lockedPool]) {
+  for (const candidate of eligibleDistractors(word, unlocked)) {
     if (distractors.length === OPTION_COUNT - 1) break;
     // A word may offer any of its senses; pick one that doesn't duplicate an
     // option already on the board.
@@ -103,6 +129,29 @@ export function buildQuestion(word, unlocked, cursors = {}) {
   return { word, answer, glossIndex, options };
 }
 
+/**
+ * Build one reversed question: an English sense as the prompt, Hebrew words as
+ * the options. Conflict exclusion matters more here — every word carrying the
+ * prompt's sense would be a correct answer, so all of them are barred.
+ */
+export function buildReverseQuestion(word, unlocked, cursors = {}) {
+  const senses = promptableGlosses(word);
+  const schedule = glossOrder(senses.length);
+  const glossIndex = schedule[(cursors[word.id] ?? 0) % schedule.length];
+  const prompt = senses[glossIndex];
+
+  const distractors = eligibleDistractors(word, unlocked)
+    .slice(0, OPTION_COUNT - 1)
+    .map((w) => ({ word: w, text: w.he, from: w.id, correct: false }));
+
+  const options = shuffled([
+    { word, text: word.he, from: word.id, correct: true },
+    ...distractors,
+  ]);
+
+  return { word, prompt, answer: word.he, glossIndex, options, reverse: true };
+}
+
 /* The first gloss is the primary sense, so it comes up far more than the rest.
    Interleaving it with each of the others — 0,1,0,2,0,3 — gives it half of all
    appearances while still guaranteeing every sense is reached, which a simple
@@ -115,8 +164,16 @@ export function glossOrder(count) {
 }
 
 /** Advance this word's cursor to its next scheduled sense. */
-export function advanceCursor(cursors, word) {
-  const length = glossOrder(word.glosses.length).length;
-  const next = ((cursors[word.id] ?? 0) + 1) % length;
+export function advanceCursor(cursors, word, direction = "he-en") {
+  const count = direction === "en-he"
+    ? promptableGlosses(word).length
+    : word.glosses.length;
+  const next = ((cursors[word.id] ?? 0) + 1) % glossOrder(count).length;
   return { ...cursors, [word.id]: next };
 }
+
+/** One entry point, so callers don't branch on direction themselves. */
+export const buildFor = (direction, word, unlocked, cursors) =>
+  direction === "en-he"
+    ? buildReverseQuestion(word, unlocked, cursors)
+    : buildQuestion(word, unlocked, cursors);
