@@ -57,6 +57,7 @@ console.log("── keyboard reference ──");
 check("keyboard rendered", doc.querySelectorAll(".kbd-key").length, 31);
 check("one key highlighted", doc.querySelectorAll(".kbd-active").length, 1);
 check("most keys still locked", doc.querySelectorAll(".kbd-locked").length, 26);
+check("no niqqud strip before points unlock", doc.querySelectorAll(".kbd-point").length, 0);
 check("layout named", rendered().includes("SI-1452"), true);
 
 console.log("── first key is kaf on F ──");
@@ -108,10 +109,48 @@ const unlockedNow = 31 - doc.querySelectorAll(".kbd-locked").length - 4; // 4 pu
 check("unlocked more than one key", unlockedNow > 1, true);
 check("still rendering a prompt", Boolean(txt(".glyph")), true);
 
+console.log("── reaching the niqqud stage ──");
+/* Skip ahead with the unlock control; each unlock shows an intro to clear. */
+for (let i = 0; i < 40; i++) {
+  if (doc.querySelectorAll(".kbd-point").length) break;
+  const unlock = [...doc.querySelectorAll("button")].find((b) => b.textContent.trim() === "Unlock the next one");
+  if (!unlock) break;
+  click(unlock);
+  await tick(80);
+  const g = txt(".glyph") ?? txt(".glyph-word");
+  if (g) { type(g); await tick(60); await tick(620); }
+}
+check("niqqud strip appears", doc.querySelectorAll(".kbd-point").length > 0, true);
+check("strip labelled with a modifier", /AltGr|⌥/.test(rendered()), true);
+
+/* Drill until a point comes up, then confirm the prompt is a real cluster. */
+let sawPoint = false, pointPrompt = null;
+for (let i = 0; i < 60; i++) {
+  const g = txt(".glyph") ?? txt(".glyph-word");
+  if (!g) break;
+  if (/[\u05B0-\u05C2]/.test(g) && [...g].length === 2) { sawPoint = true; pointPrompt = g; }
+  type(g); await tick(60); await tick(620);
+  if (sawPoint) break;
+}
+check("a point was drilled on a cluster", sawPoint, true);
+check("cluster is letter + point, never a bare point", pointPrompt && /^[\u05D0-\u05EA][\u05B0-\u05C2]$/.test(pointPrompt), true);
+
+console.log("── platform toggle ──");
+const seg = (label) => [...doc.querySelectorAll("label")].find((l) => l.textContent.trim() === label);
+check("macOS option present", Boolean(seg("macOS")), true);
+check("Windows option present", Boolean(seg("Windows")), true);
+const radio = (v) => [...doc.querySelectorAll("input[type=radio]")].find((r) => r.value === v);
+radio("win")?.click();
+await tick();
+check("switching platform keeps the drill alive", Boolean(txt(".glyph")) || Boolean(txt(".glyph-word")), true);
+radio("mac")?.click();
+await tick();
+
 console.log("── persistence and isolation ──");
 const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:typing") || "null");
 check("typing slice saved", Boolean(slice), true);
 check("unlocked persisted", slice?.progress?.unlocked > 1, true);
+check("platform persisted", ["mac","win"].includes(slice?.os), true);
 check("vocabulary slice independent", w.localStorage.getItem("hebrew-practice:vocabulary"), null);
 
 console.log("── other pages still work ──");

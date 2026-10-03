@@ -120,3 +120,7 @@
   .kbd-he { font-size: 0.85rem; }
   .kbd-cap { font-size: 0.5rem; }
 }
+
+/* Niqqud chips in the keyboard reference */
+.kbd-point { width: 46px; }
+.kbd-point .kbd-cap { font-size: 0.55rem; letter-spacing: 0.02em; }

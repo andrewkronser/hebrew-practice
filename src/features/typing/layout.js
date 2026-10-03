@@ -11,11 +11,23 @@
    across platforms. If that's the one you want, it drops in here as a second
    ROWS/ORDER pair and nothing else changes.
 
-   Niqqud live on the AltGr (⌥ on macOS) layer and are deliberately absent:
-   the published tables I could reach disagreed about which keys carry dagesh
-   and qubuts, and macOS uses a different scheme again. Rather than print a
-   chart that teaches a wrong finger, the trainer covers letters and real
-   unpointed words. */
+   Niqqud sit on a modifier layer and differ by platform, so both are below.
+
+   Windows (SI-1452 layer 3, AltGr): taken from the published standard draft,
+   which lists each point by the Hebrew letter on its key; translated here
+   through the letter table above. It agrees with Microsoft's own table on 9 of
+   14, and every disagreement is Microsoft's bottom row shifted one place right
+   — the same extraction fault already seen on the top row — so the standard is
+   followed.
+
+   macOS (⌥): the number row runs 1-0 through hataf-patah, hataf-qamats,
+   hataf-segol, hiriq, tsere, patah, qamats, qubuts, segol, holam, with sheva
+   and dagesh off to the side. A second source put sheva on ⌥0, holam on ⌥O and
+   dagesh on ⌥~; the sequential run is the more systematic account and is used
+   here. Those three are the least certain cells in this file.
+
+   None of this gates the trainer: answers are graded on the character produced,
+   so a wrong hint costs you one hunt for a key, not a wrong answer. */
 
 export const LAYOUT_NAME = "Hebrew (Standard) — SI-1452";
 
@@ -82,3 +94,34 @@ export const CURRICULUM = ORDERED_KEYS.map((key, i) => {
 });
 
 export const FINAL_FORMS = new Set(["ך", "ם", "ן", "ף", "ץ"]);
+
+/* ------------------------------------------------------------------ niqqud --
+
+   `win` is the QWERTY key held with AltGr; `mac` the key held with ⌥.
+   Ordered by how often a beginner meets them. */
+
+export const NIQQUD = [
+  { id: "n-patah",   he: "\u05B7", name: "patah",        win: "p",  mac: "6" },
+  { id: "n-qamats",  he: "\u05B8", name: "qamats",       win: "e",  mac: "7" },
+  { id: "n-segol",   he: "\u05B6", name: "segol",        win: "x",  mac: "9" },
+  { id: "n-tsere",   he: "\u05B5", name: "tsere",        win: "m",  mac: "5" },
+  { id: "n-hiriq",   he: "\u05B4", name: "hiriq",        win: "j",  mac: "4" },
+  { id: "n-holam",   he: "\u05B9", name: "holam",        win: "u",  mac: "0" },
+  { id: "n-sheva",   he: "\u05B0", name: "sheva",        win: "a",  mac: ";" },
+  { id: "n-dagesh",  he: "\u05BC", name: "dagesh",       win: "s",  mac: "," },
+  { id: "n-qubuts",  he: "\u05BB", name: "qubuts",       win: "\\", mac: "8" },
+  { id: "n-shin",    he: "\u05C1", name: "shin dot",     win: "w",  mac: "\u21E7;" },
+  { id: "n-sin",     he: "\u05C2", name: "sin dot",      win: "q",  mac: "\u21E7'" },
+  { id: "n-hpatah",  he: "\u05B2", name: "hataf patah",  win: "[",  mac: "1" },
+  { id: "n-hqamats", he: "\u05B3", name: "hataf qamats", win: "r",  mac: "2" },
+  { id: "n-hsegol",  he: "\u05B1", name: "hataf segol",  win: "c",  mac: "3" },
+];
+
+export const niqqudById = new Map(NIQQUD.map((n) => [n.he, n]));
+
+/** Key hint for the chosen platform, as a printable combo. */
+export function niqqudHint(point, os) {
+  const n = niqqudById.get(point);
+  if (!n) return null;
+  return os === "mac" ? `\u2325${n.mac.toUpperCase()}` : `AltGr+${n.win.toUpperCase()}`;
+}
