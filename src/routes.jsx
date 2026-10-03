@@ -1,6 +1,7 @@
 import TransliterationPage from "./features/transliteration/TransliterationPage.jsx";
 import VocabularyPage from "./features/vocabulary/VocabularyPage.jsx";
 import TypingPage from "./features/typing/TypingPage.jsx";
+import GenderNumberPage from "./features/gender-number/GenderNumberPage.jsx";
 import StubPage from "./shared/StubPage.jsx";
 
 /* One source of truth for the sections. The header nav, the mobile navbar and
@@ -16,5 +17,5 @@ export const SECTIONS = [
   { path: "/vocabulary", label: "Vocabulary", Component: VocabularyPage },
   { path: "/typing", label: "Learn to Type", Component: TypingPage },
   { path: "/roots", label: "Roots", Component: stub("Roots") },
-  { path: "/gender-and-number", label: "Gender and Number", Component: stub("Gender and Number") },
+  { path: "/gender-and-number", label: "Gender and Number", Component: GenderNumberPage },
 ];

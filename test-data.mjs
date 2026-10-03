@@ -2,6 +2,8 @@
    words and rendered as tofu, because Frank Ruhl Libre has no glyph for it. */
 import { WORD_BANK } from "./src/features/vocabulary/data.js";
 import { glossOrder, buildQuestion, advanceCursor } from "./src/features/vocabulary/quiz.js";
+import { FORMS, CELLS, isCorrectCell } from "./src/features/gender-number/data.js";
+import { pickForm, correctCells } from "./src/features/gender-number/drill.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
 import { NIQQUD, LETTER_KEYS } from "./src/shared/hebrewKeyboard.js";
 import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "./src/features/typing/typing.js";
@@ -119,6 +121,39 @@ check("no feature disagrees with the other", conflicts.join(" | ") || "none", "n
 const latin = /^[a-zɛəʾʿ()ʼ'\u0101\u0113\u012B\u014D\u016B\u00E2\u00EA\u00EE\u00F4\u00FB\u0103\u0115\u014F\u1E25\u1E6D\u1E63\u0161\u015B\u1E07\u1E0F\u1E35\u1E6F\u1E21\u0304\u0073\u0070 -]+$/i;
 const odd = WORD_BANK.filter((w) => !latin.test(w.tr)).map((w) => `${w.key}:${w.tr}`);
 check("all transliterations use the expected notation", odd.join(",") || "none", "none");
+
+console.log("── gender and number forms ──");
+check("form count", FORMS.length, 116);
+check("every form has a transliteration", FORMS.filter((f) => !f.tr).length, 0);
+check("no duplicate surface forms",
+  FORMS.length - new Set(FORMS.map((f) => f.he)).size, 0);
+/* Every form must land in exactly as many cells as it has genders — one for
+   most, two for the handful attested in both. */
+const miscounted = FORMS.filter((f) => correctCells(f).length !== f.genders.length).map((f) => f.he);
+check("each form maps to the right number of cells", miscounted.join(",") || "none", "none");
+check("all six cells are populated",
+  CELLS.filter((c) => !FORMS.some((f) => isCorrectCell(f, c))).length, 0);
+/* The dual is a lexical residue in Biblical Hebrew, not a productive form.
+   Guard the count so no one quietly invents one. */
+const duals = FORMS.filter((f) => f.number === "dual");
+check("exactly seven duals", duals.length, 7);
+check("duals are the expected forms", duals.map((f) => f.he).sort().join(" "),
+  ["אָזְנַיִם", "יָדַיִם", "מַיִם", "עֵינַיִם", "רַגְלַיִם", "שָׁמַיִם", "יוֹמַיִם"].sort().join(" "));
+/* Every form's Hebrew must be renderable, same guard as the word data. */
+check("gender/number forms use safe codepoints", unsafeIn(FORMS).join(",") || "clean", "clean");
+
+/* Duals are oversampled on purpose; check the rate rather than trusting it. */
+const stats = Object.fromEntries(FORMS.map((f) => [f.id, { s: 0.8, a: 5 }]));
+let dualHits = 0, lastId = null;
+const RUNS = 20000;
+for (let i = 0; i < RUNS; i++) {
+  const f = pickForm({ unlocked: FORMS.length, stats }, lastId);
+  if (f.number === "dual") dualHits++;
+  lastId = f.id;
+}
+const rate = dualHits / RUNS;
+console.log(`   duals are ${(rate * 100).toFixed(1)}% of prompts (${(7 / FORMS.length * 100).toFixed(1)}% unweighted)`);
+check("duals oversampled into a useful range", rate > 0.15 && rate < 0.35, true);
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
 process.exit(results.every(Boolean) ? 0 : 1);
