@@ -213,6 +213,22 @@ export function pickNext(progress, lastId) {
    says it has fallen back to that. Points have no bare-key equivalent, so they
    genuinely need a Hebrew input source. */
 
+/* Marks are compared in canonical order, not the order you happened to type
+   them in. דַּ is stored as dalet + patah + dagesh, but pressing dagesh before
+   the vowel produces dalet + dagesh + patah — a different string that renders
+   identically, so without this you would be told your answer was wrong while it
+   looked exactly like the prompt. Unicode gives every Hebrew point a distinct
+   canonical combining class, so reordering is well defined and cannot collapse
+   two genuinely different pointings.
+
+   NFD rather than NFC: it also expands a precomposed presentation form (U+FB2A
+   שׁ, which a paste might bring in) into its letter and dot, and it can never
+   compose in the other direction. */
+export const canonical = (s) => String(s).normalize("NFD");
+
+/** Length in code points after normalising — what the caller should gate on. */
+export const canonicalLength = (s) => [...canonical(s)].length;
+
 export function gradeChar(typed, expected) {
   if (typed === expected) return "hebrew";
   const key = hebrewToKey.get(expected);
@@ -221,8 +237,8 @@ export function gradeChar(typed, expected) {
 }
 
 export function gradeAttempt(typed, target) {
-  const want = [...target];
-  const got = [...typed];
+  const want = [...canonical(target)];
+  const got = [...canonical(typed)];
   if (got.length !== want.length) return { correct: false, positionMode: false, marks: [] };
   const marks = want.map((ch, i) => gradeChar(got[i], ch));
   return {

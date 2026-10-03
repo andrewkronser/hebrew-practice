@@ -3,7 +3,7 @@
 import { WORD_BANK } from "./src/features/vocabulary/data.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
 import { NIQQUD, LETTER_KEYS } from "./src/features/typing/layout.js";
-import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS } from "./src/features/typing/typing.js";
+import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "./src/features/typing/typing.js";
 
 /* Letters, the common points, shin/sin dots, meteg, maqaf, space. Deliberately
    excludes the cantillation block U+0591-U+05AF and U+05BA holam-haser, which
@@ -67,6 +67,21 @@ check("pointed words reachable before halfway", firstPointed <= CURRICULUM.lengt
 const firstPoint = CURRICULUM.findIndex((i) => i.point) + 1;
 console.log(`   first point introduced at position ${firstPoint}`);
 check("a point arrives within the first six items", firstPoint <= 6, true);
+
+console.log("── grading ignores mark order, not mark identity ──");
+const DALET_PATAH_DAGESH = "\u05D3\u05B7\u05BC";
+const ok = (typed, target) => gradeAttempt(typed, target).correct;
+/* Accepted whichever order the marks were pressed in. */
+check("dagesh before the vowel", ok("\u05D3\u05BC\u05B7", DALET_PATAH_DAGESH), true);
+check("vowel before the dagesh", ok(DALET_PATAH_DAGESH, DALET_PATAH_DAGESH), true);
+check("shin dot before the vowel", ok("\u05E9\u05C1\u05B8", "\u05E9\u05B8\u05C1"), true);
+check("precomposed shin accepted", ok("\uFB2A", "\u05E9\u05C1"), true);
+check("latin position fallback survives reordering", ok("s\u05BC\u05B7", DALET_PATAH_DAGESH), true);
+/* Still strict about everything that actually matters. */
+check("wrong vowel rejected", ok("\u05D3\u05B8\u05BC", DALET_PATAH_DAGESH), false);
+check("wrong letter rejected", ok("\u05D2\u05B7\u05BC", DALET_PATAH_DAGESH), false);
+check("missing mark rejected", ok("\u05D3\u05B7", DALET_PATAH_DAGESH), false);
+check("extra mark rejected", ok("\u05D3\u05B7\u05BC\u05B4", DALET_PATAH_DAGESH), false);
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
 process.exit(results.every(Boolean) ? 0 : 1);

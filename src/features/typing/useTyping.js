@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CURRICULUM } from "./typing.js";
 import { capForCode, niqqudById } from "./layout.js";
-import { emptyProgress, pickNext, gradeAttempt, shouldUnlock } from "./typing.js";
+import { emptyProgress, pickNext, gradeAttempt, shouldUnlock, canonicalLength } from "./typing.js";
 import { scoreAnswer } from "../../shared/progression.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
@@ -127,7 +127,9 @@ export function useTyping() {
     }
 
     setValue(raw);
-    if ([...raw].length < [...target].length) return;
+    /* Gate on the canonical length too, so a pasted precomposed form doesn't
+       stall the evaluation by being one code point short. */
+    if (canonicalLength(raw) < canonicalLength(target)) return;
     const graded = gradeAttempt(raw, target);
     if (graded.positionMode) setPositionMode(true);
     settle(graded.correct, graded.marks);
