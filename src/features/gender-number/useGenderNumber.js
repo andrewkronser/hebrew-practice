@@ -1,9 +1,8 @@
 /* State for the gender-and-number drill. Same confidence engine as the rest. */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FORMS, CELLS } from "./data.js";
-import { emptyProgress, pickNext, gradeCell, shouldUnlock } from "./drill.js";
-import { scoreAnswer } from "../../shared/progression.js";
+import { FORMS, CELLS, SEED_SIZE } from "./data.js";
+import { emptyProgress, pickForm, gradeCell, shouldUnlock, unlock, scoreAnswer } from "./drill.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
 const SLICE = "gender-number";
@@ -12,7 +11,14 @@ const emptySession = (best = 0) => ({ right: 0, total: 0, streak: 0, best, tape:
 export function useGenderNumber() {
   const saved = useRef(loadSlice(SLICE)).current;
 
-  const [progress, setProgress] = useState(() => saved?.progress ?? emptyProgress());
+  const [progress, setProgress] = useState(() => {
+    const stored = saved?.progress;
+    if (!stored) return emptyProgress();
+    /* Progress saved before the six-cell seed existed, or before this feature
+       dropped its introduction cards, can sit below the opening size. */
+    const { introOf, ...rest } = stored;
+    return { ...rest, unlocked: Math.max(SEED_SIZE, stored.unlocked ?? SEED_SIZE) };
+  });
   const [session, setSession] = useState(() => emptySession(saved?.best ?? 0));
   const [showTranslit, setShowTranslit] = useState(() => saved?.showTranslit ?? false);
   const [card, setCard] = useState(null);
@@ -27,13 +33,8 @@ export function useGenderNumber() {
   const deal = useCallback((fromProgress) => {
     const p = fromProgress ?? progressRef.current;
     setResult(null);
-    const next = pickNext(p, lastIdRef.current);
-    setCard(next);
-    if (next.kind === "intro") {
-      const cleared = { ...p, introOf: null };
-      progressRef.current = cleared;
-      setProgress(cleared);
-    }
+    const form = pickForm(p, lastIdRef.current);
+    setCard(form ? { kind: "quiz", form } : { kind: "empty" });
     startedAt.current = Date.now();
   }, []);
 
@@ -69,24 +70,17 @@ export function useGenderNumber() {
         stats: scoreAnswer(p.stats, form, { correct, ms, hinted: false }),
         since: p.since + 1,
       };
-      if (shouldUnlock(next)) {
-        next = { ...next, introOf: next.unlocked, unlocked: next.unlocked + 1, since: 0 };
-      }
+      if (shouldUnlock(next)) next = unlock(next);
       return next;
     });
   }, [card, result]);
 
   const next = useCallback(() => { if (result) deal(); }, [result, deal]);
 
-  const acknowledge = useCallback(() => {
-    const p = progressRef.current;
-    deal(p);
-  }, [deal]);
-
   const unlockNext = useCallback(() => {
     const p = progressRef.current;
     if (p.unlocked >= FORMS.length) return;
-    const updated = { ...p, introOf: p.unlocked, unlocked: p.unlocked + 1, since: 0 };
+    const updated = unlock(p);
     progressRef.current = updated;
     setProgress(updated);
     deal(updated);
@@ -107,7 +101,6 @@ export function useGenderNumber() {
     const onKey = (e) => {
       if (e.key === "Enter") {
         if (result) { e.preventDefault(); deal(); }
-        else if (card?.kind === "intro") { e.preventDefault(); acknowledge(); }
         return;
       }
       if (result || card?.kind !== "quiz") return;
@@ -119,10 +112,10 @@ export function useGenderNumber() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [card, result, answer, deal, acknowledge]);
+  }, [card, result, answer, deal]);
 
   return {
     card, result, progress, session, showTranslit, setShowTranslit,
-    answer, next, acknowledge, unlockNext, resetAll,
+    answer, next, unlockNext, resetAll,
   };
 }

@@ -2,8 +2,8 @@
    words and rendered as tofu, because Frank Ruhl Libre has no glyph for it. */
 import { WORD_BANK } from "./src/features/vocabulary/data.js";
 import { glossOrder, buildQuestion, advanceCursor } from "./src/features/vocabulary/quiz.js";
-import { FORMS, CELLS, isCorrectCell } from "./src/features/gender-number/data.js";
-import { pickForm, correctCells } from "./src/features/gender-number/drill.js";
+import { FORMS, CELLS, SEED_SIZE, isCorrectCell } from "./src/features/gender-number/data.js";
+import { pickForm, correctCells, engine, PACING } from "./src/features/gender-number/drill.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
 import { NIQQUD, LETTER_KEYS } from "./src/shared/hebrewKeyboard.js";
 import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "./src/features/typing/typing.js";
@@ -154,6 +154,30 @@ for (let i = 0; i < RUNS; i++) {
 const rate = dualHits / RUNS;
 console.log(`   duals are ${(rate * 100).toFixed(1)}% of prompts (${(7 / FORMS.length * 100).toFixed(1)}% unweighted)`);
 check("duals oversampled into a useful range", rate > 0.15 && rate < 0.35, true);
+
+console.log("── the rotation seed covers every cell ──");
+const seed = FORMS.slice(0, SEED_SIZE);
+const uncovered = CELLS.filter((c) => !seed.some((f) => isCorrectCell(f, c)))
+  .map((c) => `${c.gender} ${c.number}`);
+check("all six cells live from the first question", uncovered.join(",") || "none", "none");
+check("engine opens at the seed size", engine.emptyProgress().unlocked, SEED_SIZE);
+
+console.log("── pacing never stalls a competent learner ──");
+/* The failure this engine exists to avoid is a gate that quietly stops someone
+   from ever unlocking anything. Check across the range that matters; on a
+   six-option grid, pure guessing scores 1/6, so below ~0.35 a stall is correct. */
+for (const acc of [0.5, 0.65, 0.8, 0.95]) {
+  let p = engine.emptyProgress(), n = 0;
+  for (let i = 0; i < 80000 && p.unlocked < FORMS.length; i++) {
+    const it = engine.pickWeak(p, null);
+    p = { ...p, stats: engine.scoreAnswer(p.stats, it, { correct: Math.random() < acc, ms: 2500 }), since: p.since + 1 };
+    n++;
+    if (engine.shouldUnlock(p)) p = engine.unlock(p);
+  }
+  const done = p.unlocked >= FORMS.length;
+  console.log(`   ${acc}: ${done ? n + " answers" : "stalled at " + p.unlocked}`);
+  check(`accuracy ${acc} reaches every form`, done, true);
+}
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
 process.exit(results.every(Boolean) ? 0 : 1);

@@ -18,7 +18,7 @@
    the other holam on ⌥O; it is actually ⌥=. The number row runs ⌥1-⌥9 through
    hataf-patah, hataf-qamats, hataf-segol, hiriq, tsere, patah, qamats, qubuts,
    segol, with sheva on ⌥0, and holam, dagesh, shin dot and sin dot off the row
-   on =, comma, A and M.
+   on =, comma, M and A.
 
    The trainer still watches which physical key actually produces each point and
    prefers what it sees over this table, which is how these values were found.
@@ -121,8 +121,8 @@ export const NIQQUD = [
   { id: "n-sheva",   he: "\u05B0", name: "sheva",        win: "a",  mac: "0", confident: true },
   { id: "n-dagesh",  he: "\u05BC", name: "dagesh",       win: "s",  mac: ",", confident: true },
   { id: "n-qubuts",  he: "\u05BB", name: "qubuts",       win: "\\", mac: "8", confident: true },
-  { id: "n-shin",    he: "\u05C1", name: "shin dot",     win: "w",  mac: "a", confident: true },
-  { id: "n-sin",     he: "\u05C2", name: "sin dot",      win: "q",  mac: "m", confident: true },
+  { id: "n-shin",    he: "\u05C1", name: "shin dot",     win: "w",  mac: "m", confident: true },
+  { id: "n-sin",     he: "\u05C2", name: "sin dot",      win: "q",  mac: "a", confident: true },
   { id: "n-hpatah",  he: "\u05B2", name: "hataf patah",  win: "[",  mac: "1", confident: true },
   { id: "n-hqamats", he: "\u05B3", name: "hataf qamats", win: "r",  mac: "2", confident: true },
   { id: "n-hsegol",  he: "\u05B1", name: "hataf segol",  win: "c",  mac: "3", confident: true },

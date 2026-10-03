@@ -46,10 +46,15 @@ console.log("── reaching the page ──");
 click(link("Gender and Number"));
 await tick();
 check("heading", txt("h1"), "Gender and Number");
-check("starts on an introduction", rendered().includes("New form"), true);
-check("intro shows the parse", /masculine|feminine/.test(rendered()), true);
-click(btn("Got it"));
-await tick();
+/* The footer prose mentions "new forms", so test the intro card's own
+   affordance rather than its wording. */
+check("no introduction card", Boolean(btn("Got it")), false);
+check("opens straight into a question", cellButtons().length, 6);
+
+console.log("\n── the rotation opens on all six cells ──");
+/* Every option must be live from the first question, which a plain prefix of
+   the form list could not manage — duals sit a dozen entries deep. */
+check("opens with six forms", rendered().includes("6 of 116"), true);
 
 console.log("\n── the six-cell grid ──");
 check("six cells", cellButtons().length, 6);
@@ -94,7 +99,6 @@ let answered = 0;
 for (let i = 0; i < 90 && answered < 60; i++) {
   /* An unlock drops an introduction in front of the grid; clear it and carry on
      rather than treating the missing grid as a failure. */
-  if (btn("Got it")) { click(btn("Got it")); await tick(60); continue; }
   const cells = cellButtons();
   if (!cells.length) break;
   click(cells[Math.floor(Math.random() * cells.length)]);
@@ -102,14 +106,14 @@ for (let i = 0; i < 90 && answered < 60; i++) {
   answered++;
   if (btn("Next")) { click(btn("Next")); await tick(60); }
 }
-if (btn("Got it")) { click(btn("Got it")); await tick(60); }
 check("ran without error", answered >= 60, true);
 check("still rendering a question", cellButtons().length, 6);
 
 console.log("\n── persistence and isolation ──");
 const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:gender-number") || "null");
 check("slice saved", Boolean(slice), true);
-check("unlocked persisted", slice?.progress?.unlocked >= 1, true);
+check("unlocked persisted", slice?.progress?.unlocked >= 6, true);
+check("no stale intro state saved", "introOf" in (slice?.progress ?? {}), false);
 check("vocabulary slice untouched by this page", w.localStorage.getItem("hebrew-practice:vocabulary"), null);
 
 console.log("\n── other pages still work ──");

@@ -26,17 +26,13 @@ export default function GenderNumberPage() {
       </Group>
 
       <Paper withBorder radius="lg" p="xl" shadow="sm">
-        {g.card.kind === "intro" ? (
-          <Introduction form={g.card.form} onContinue={g.acknowledge} />
-        ) : (
-          <Question
-            form={g.card.form}
-            result={g.result}
-            showTranslit={g.showTranslit}
-            onAnswer={g.answer}
-            onNext={g.next}
-          />
-        )}
+        <Question
+          form={g.card.form}
+          result={g.result}
+          showTranslit={g.showTranslit}
+          onAnswer={g.answer}
+          onNext={g.next}
+        />
       </Paper>
 
       <StatsTape session={g.session} />
@@ -61,9 +57,10 @@ export default function GenderNumberPage() {
       </Group>
 
       <Text size="xs" c="dimmed" lh={1.6}>
-        Press 1–6 to answer, Enter to move on. Duals come up far more often here than
-        their share of the vocabulary, since only seven forms in the whole bank take
-        one. A few words are attested in both genders — either column counts.
+        Press 1–6 to answer, Enter to move on. New forms arrive unannounced and the
+        reveal teaches them. Duals come up far more often here than their share of the
+        vocabulary, since only seven forms in the whole bank take one. A few words are
+        attested in both genders — either column counts.
       </Text>
     </Stack>
   );
@@ -76,24 +73,6 @@ function Parse({ form }) {
     .join(" or ");
   const number = NUMBERS.find((n) => n.id === form.number).label.toLowerCase();
   return <>{gender} {number}</>;
-}
-
-function Introduction({ form, onContinue }) {
-  return (
-    <Stack gap="md" align="center">
-      <Text size="xs" fw={700} c="tekhelet" tt="uppercase" style={{ letterSpacing: "0.06em" }}>
-        New form
-      </Text>
-      <Box className="hebrew glyph-word" dir="rtl">{form.he}</Box>
-      <Text className="translit" c="dimmed" fz="lg">{form.tr}</Text>
-      <Text fw={600}><Parse form={form} /></Text>
-      <Text size="sm" c="dimmed">{form.gloss}</Text>
-      {form.note && (
-        <Text size="xs" c="dimmed" ta="center" maw={420}>{form.note}</Text>
-      )}
-      <Button onClick={onContinue}>Got it</Button>
-    </Stack>
-  );
 }
 
 function Question({ form, result, showTranslit, onAnswer, onNext }) {

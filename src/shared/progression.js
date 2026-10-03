@@ -138,3 +138,137 @@ export function pickWeakFrom(pool, stats, lastId) {
 export function pickWeak(items, { unlocked, stats }, lastId) {
   return pickWeakFrom(activeItems(items, unlocked), stats, lastId);
 }
+
+/* ===========================================================================
+   Parameterised engine.
+
+   Everything above is this engine running on DEFAULT_PACING, which is why the
+   other trainers needed no changes when this was added. Use the factory when a
+   feature wants different pacing.
+
+   The case for varying it is about how independent the items are, not about how
+   hard the questions feel. Transliteration's 49 glyphs really are 49 separate
+   facts, so unlocking one at a time is right. Gender and number is roughly eight
+   patterns and a tail of irregulars — learn that ־ִים marks a plural and you have
+   effectively learned 35 of the 116 forms at once — so item-by-item mastery is
+   the wrong model and slow unlocking just wastes time.
+
+   Whatever you change, re-run the pacing simulation. The failure this engine was
+   built to avoid is a gate that quietly stops a learner below some accuracy from
+   ever unlocking anything.
+   =========================================================================== */
+
+export const DEFAULT_PACING = {
+  startUnlocked: 1,
+  masterScore: MASTER_SCORE,
+  masterTries: MASTER_TRIES,
+  cooldown: COOLDOWN,
+  patience: PATIENCE,
+  fastMs: FAST_MS,
+  gainFast: 0.34,
+  gainSlow: 0.18,
+  penalty: 0.55,
+  slackFraction: 0.25,
+  slackMin: 2,
+  unlockStep: 1,
+};
+
+/**
+ * Bind the engine to one item list and one set of pacing values.
+ *
+ *   items       ordered; position is the order of introduction
+ *   pacing      overrides merged over DEFAULT_PACING
+ *   isExcluded  optional predicate for items switched off by the learner
+ *   weightFor   optional multiplier hook, for oversampling a class of item
+ */
+export function createProgression({ items, pacing = {}, isExcluded, weightFor } = {}) {
+  const P = { ...DEFAULT_PACING, ...pacing };
+  const excluded = isExcluded ?? (() => false);
+  const slack = (n) => Math.max(P.slackMin, Math.ceil(n * P.slackFraction));
+
+  const active = (unlocked) => items.slice(0, unlocked);
+
+  const mastered = (stats, item) => {
+    const r = statOf(stats, item.id);
+    return r.a >= P.masterTries && r.s >= P.masterScore;
+  };
+  const shaky = (unlocked, stats) =>
+    active(unlocked).filter((it) => !mastered(stats, it) && !excluded(it));
+  const mean = (unlocked, stats) => {
+    const pool = active(unlocked);
+    if (!pool.length) return 0;
+    return pool.reduce((t, it) => t + statOf(stats, it.id).s, 0) / pool.length;
+  };
+
+  const score = (stats, item, { correct, ms, hinted }) => {
+    const r = statOf(stats, item.id);
+    const next = { a: r.a + 1, s: r.s };
+    if (correct) {
+      const fast = ms < P.fastMs && !hinted;
+      next.s = r.s + (1 - r.s) * (fast ? P.gainFast : P.gainSlow);
+    } else {
+      next.s = r.s * P.penalty;
+    }
+    return { ...stats, [item.id]: next };
+  };
+
+  const ready = ({ unlocked, stats, since }) => {
+    if (unlocked >= items.length) return false;
+    if (since < P.cooldown) return false;
+    const newestItem = items[unlocked - 1];
+    if (newestItem && !excluded(newestItem)) {
+      const newest = statOf(stats, newestItem.id);
+      if (newest.a < P.masterTries || newest.s < P.masterScore) return false;
+    }
+    if (shaky(unlocked, stats).length <= slack(unlocked)) return true;
+    return since >= P.patience && mean(unlocked, stats) >= 0.6;
+  };
+
+  /** Returns the progress with the next step unlocked; `since` restarts. */
+  const unlock = (progress) => ({
+    ...progress,
+    unlocked: Math.min(items.length, progress.unlocked + P.unlockStep),
+    since: 0,
+  });
+
+  const label = ({ unlocked, stats }) => {
+    if (unlocked >= items.length) return null;
+    const newestItem = items[unlocked - 1];
+    if (newestItem && !excluded(newestItem)) {
+      const newest = statOf(stats, newestItem.id);
+      if (newest.a < P.masterTries || newest.s < P.masterScore) return "settle the newest one";
+    }
+    const left = shaky(unlocked, stats).length;
+    return left > slack(unlocked) ? `${left} still shaky` : "next unlocks shortly";
+  };
+
+  const pick = ({ unlocked, stats }, lastId) => {
+    const pool = active(unlocked).filter((it) => !excluded(it));
+    if (pool.length <= 1) return pool[0] ?? null;
+    const weights = pool.map((it) => {
+      const r = statOf(stats, it.id);
+      let w = Math.pow(1 - r.s, 1.5) * 3 + 0.15;
+      if (r.a < P.masterTries) w *= 2.2;
+      if (weightFor) w *= weightFor(it, r);
+      if (it.id === lastId) w *= 0.05;
+      return w;
+    });
+    return weightedPick(pool, weights);
+  };
+
+  return {
+    pacing: P,
+    items,
+    emptyProgress: () => ({ unlocked: P.startUnlocked, stats: {}, since: 0 }),
+    active,
+    isMastered: mastered,
+    shakyItems: shaky,
+    meanScore: mean,
+    scoreAnswer: score,
+    shouldUnlock: ready,
+    unlock,
+    gateLabel: label,
+    pickWeak: pick,
+    slackFor: slack,
+  };
+}

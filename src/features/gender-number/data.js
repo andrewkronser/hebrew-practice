@@ -165,8 +165,27 @@ export const FORMS = (() => {
       });
     }
   }
-  return out.map((f, i) => ({ ...f, idx: i }));
+  /* The rotation opens with one form in each of the six cells, so every option
+     on the grid is live from the first question. A plain prefix of the list
+     could never do that — duals sit a dozen entries deep — so the seed is
+     pulled to the front here rather than the engine being taught about cells.
+
+     These six are the regular patterns: ־ָה and ־וֹת feminine, ־ִים masculine,
+     ־ַיִם dual. The irregulars (נָשִׁים, אֲנָשִׁים, אָבוֹת) come later, once the
+     defaults they violate are familiar. */
+  const SEED = [
+    "sus-base", "milchamah-base",   // m / f singular
+    "yom-du", "yad-du",             // m / f dual
+    "sus-pl", "milchamah-pl",       // m / f plural
+  ];
+  const seeded = SEED.map((id) => out.find((f) => f.id === id));
+  if (seeded.some((f) => !f)) throw new Error("SEED names a form that does not exist");
+  const rest = out.filter((f) => !SEED.includes(f.id));
+  return [...seeded, ...rest].map((f, i) => ({ ...f, idx: i }));
 })();
+
+/** How many forms the rotation opens with — the seed above. */
+export const SEED_SIZE = 6;
 
 /* The six cells, in the order they're laid out and hotkeyed: two gender
    columns across, three number rows down. */
