@@ -12,20 +12,37 @@ export default function VocabularyPage() {
       <Title order={1} size="h2">Vocabulary</Title>
 
       <Paper withBorder radius="lg" p="xl" shadow="sm">
-        {v.card.kind === "intro"
-          ? <Introduction word={v.card.word} onContinue={v.acknowledge} />
-          : <Question question={v.card.question} result={v.result} onAnswer={v.answer} onNext={v.next} />}
+        {v.card.kind === "intro" ? (
+          <Introduction word={v.card.word} onContinue={v.acknowledge} />
+        ) : v.card.kind === "empty" ? (
+          <Stack gap="xs" align="center">
+            <Text fw={600}>Every unlocked word is switched off.</Text>
+            <Text size="sm" c="dimmed" ta="center">
+              Click one in the bank below to practise it again, or switch them all back on.
+            </Text>
+          </Stack>
+        ) : (
+          <Question question={v.card.question} result={v.result} onAnswer={v.answer} onNext={v.next} />
+        )}
       </Paper>
 
       <StatsTape session={v.session} />
 
       <Box mt="md">
-        <WordBank progress={v.progress} onUnlockNext={v.unlockNext} onReset={v.resetAll} />
+        <WordBank
+          progress={v.progress}
+          disabled={v.disabled}
+          onToggle={v.toggleWord}
+          onEnableAll={v.enableAll}
+          onUnlockNext={v.unlockNext}
+          onReset={v.resetAll}
+        />
       </Box>
 
       <Text size="xs" c="dimmed" lh={1.6}>
         Press 1–4 to answer, Enter to move on. Each question shows one sense of the
-        word and rotates through the rest as it comes back around.
+        word — the first meaning comes up about half the time, with the others
+        rotating through the rest. Click any word below to stop practising it.
       </Text>
     </Stack>
   );

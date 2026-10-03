@@ -45,9 +45,16 @@ const check = (name, got, want) => {
 const optionButtons = () =>
   [...doc.querySelectorAll("button")].filter((b) => {
     const t = b.textContent.trim();
-    return t && !["Got it", "Next", "See more…", "See less", "Unlock the next one", "Start over"].includes(t)
+    if (b.classList.contains("bank-cell")) return false; // word-bank toggles
+    return t && !["Got it", "Next", "See more…", "See less", "Unlock the next one",
+                  "Start over", "Switch all back on"].includes(t)
       && !b.hasAttribute("aria-label");
   });
+
+const setVal = (el, v) => {
+  Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, "value").set.call(el, v);
+  el.dispatchEvent(new w.Event("input", { bubbles: true }));
+};
 
 console.log("── reaching the page ──");
 click(link("Vocabulary"));
@@ -111,11 +118,46 @@ click(btn("Got it"));
 await tick();
 check("bank grew by one", doc.querySelectorAll(".bank-cell").length, before + 1);
 
+console.log("\n── filter and switching words off ──");
+const cells = () => [...doc.querySelectorAll(".bank-cell")];
+const filterBox = () => doc.querySelector('input[aria-label="Filter words"]');
+check("filter box present", Boolean(filterBox()), true);
+const cellsBefore = cells().length;
+setVal(filterBox(), "zzzznomatch");
+await tick();
+check("filter narrows the list", cells().length, 0);
+check("empty filter explained", rendered().includes("Nothing matches"), true);
+setVal(filterBox(), "");
+await tick();
+check("clearing the filter restores it", cells().length, cellsBefore);
+
+click(cells()[0]);
+await tick();
+check("clicking greys the word out", doc.querySelectorAll(".bank-cell.bank-off").length, 1);
+check("count reflects it", rendered().includes("switched off"), true);
+check("aria-pressed flips", cells()[0].getAttribute("aria-pressed"), "false");
+click(cells()[0]);
+await tick();
+check("clicking again switches it back on", doc.querySelectorAll(".bank-cell.bank-off").length, 0);
+
+/* Switch every unlocked word off: the drill should say so rather than break. */
+for (const c of cells()) { click(c); await tick(40); }
+await tick();
+check("all off shows a message", rendered().includes("Every unlocked word is switched off"), true);
+check("no options rendered", optionButtons().length, 0);
+const restore = [...doc.querySelectorAll("button")].find((b) => b.textContent.trim() === "Switch all back on");
+check("restore control offered", Boolean(restore), true);
+click(restore);
+await tick();
+check("restoring brings the drill back", optionButtons().length, 4);
+check("nothing left greyed", doc.querySelectorAll(".bank-cell.bank-off").length, 0);
+
 console.log("\n── persistence ──");
 const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:vocabulary") || "null");
 check("vocabulary slice saved", Boolean(slice), true);
 check("unlocked persisted", slice?.progress?.unlocked >= 5, true);
 check("gloss cursors persisted", typeof slice?.progress?.cursors, "object");
+check("switched-off set persisted", typeof slice?.disabled, "object");
 const other = JSON.parse(w.localStorage.getItem("hebrew-practice:transliteration") || "null");
 check("transliteration keeps its own separate slice", Boolean(other && other.settings), true);
 check("vocabulary state did not leak into it", other?.progress?.cursors, undefined);

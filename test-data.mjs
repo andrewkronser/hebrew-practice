@@ -1,8 +1,9 @@
 /* Guards the character data. The accent U+05AB once slipped into 20 vocabulary
    words and rendered as tofu, because Frank Ruhl Libre has no glyph for it. */
 import { WORD_BANK } from "./src/features/vocabulary/data.js";
+import { glossOrder, buildQuestion, advanceCursor } from "./src/features/vocabulary/quiz.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
-import { NIQQUD, LETTER_KEYS } from "./src/features/typing/layout.js";
+import { NIQQUD, LETTER_KEYS } from "./src/shared/hebrewKeyboard.js";
 import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "./src/features/typing/typing.js";
 
 /* Letters, the common points, shin/sin dots, meteg, maqaf, space. Deliberately
@@ -82,6 +83,26 @@ check("wrong vowel rejected", ok("\u05D3\u05B8\u05BC", DALET_PATAH_DAGESH), fals
 check("wrong letter rejected", ok("\u05D2\u05B7\u05BC", DALET_PATAH_DAGESH), false);
 check("missing mark rejected", ok("\u05D3\u05B7", DALET_PATAH_DAGESH), false);
 check("extra mark rejected", ok("\u05D3\u05B7\u05BC\u05B4", DALET_PATAH_DAGESH), false);
+
+console.log("── the first gloss is the primary sense ──");
+for (const n of [1, 2, 3, 5]) {
+  const order = glossOrder(n);
+  const share = order.filter((i) => i === 0).length / order.length;
+  const covers = new Set(order).size === n;
+  check(`${n} gloss(es): every sense still reached`, covers, true);
+  check(`${n} gloss(es): primary is at least half`, share >= 0.5, true);
+}
+/* Walking a full cycle must hit each sense, not just favour the first. */
+const adam = WORD_BANK.find((w) => w.key === "adam");
+let cursors = {};
+const seen = [];
+for (let i = 0; i < glossOrder(adam.glosses.length).length; i++) {
+  seen.push(buildQuestion(adam, 20, cursors).answer);
+  cursors = advanceCursor(cursors, adam);
+}
+check("a full cycle covers every sense of אדם", new Set(seen).size, adam.glosses.length);
+check("primary appears most in that cycle",
+  seen.filter((g) => g === adam.glosses[0]).length, seen.length / 2);
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
 process.exit(results.every(Boolean) ? 0 : 1);

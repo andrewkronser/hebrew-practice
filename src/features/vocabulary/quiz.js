@@ -72,7 +72,8 @@ export const OPTION_COUNT = 4;
  * always is at the start, with only four words in rotation.
  */
 export function buildQuestion(word, unlocked, cursors = {}) {
-  const glossIndex = (cursors[word.id] ?? 0) % word.glosses.length;
+  const schedule = glossOrder(word.glosses.length);
+  const glossIndex = schedule[(cursors[word.id] ?? 0) % schedule.length];
   const answer = word.glosses[glossIndex];
 
   const banned = new Set(conflictsWith(word.id));
@@ -102,8 +103,20 @@ export function buildQuestion(word, unlocked, cursors = {}) {
   return { word, answer, glossIndex, options };
 }
 
-/** Advance this word's cursor to its next sense. */
+/* The first gloss is the primary sense, so it comes up far more than the rest.
+   Interleaving it with each of the others — 0,1,0,2,0,3 — gives it half of all
+   appearances while still guaranteeing every sense is reached, which a simple
+   weighted random could not promise. */
+export function glossOrder(count) {
+  if (count <= 1) return [0];
+  const out = [];
+  for (let i = 1; i < count; i++) out.push(0, i);
+  return out;
+}
+
+/** Advance this word's cursor to its next scheduled sense. */
 export function advanceCursor(cursors, word) {
-  const next = ((cursors[word.id] ?? 0) + 1) % word.glosses.length;
+  const length = glossOrder(word.glosses.length).length;
+  const next = ((cursors[word.id] ?? 0) + 1) % length;
   return { ...cursors, [word.id]: next };
 }

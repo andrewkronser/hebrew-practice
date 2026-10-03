@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CURRICULUM } from "./typing.js";
-import { capForCode, niqqudById } from "./layout.js";
+import { capForCode, niqqudById } from "../../shared/hebrewKeyboard.js";
 import { emptyProgress, pickNext, gradeAttempt, shouldUnlock, canonicalLength } from "./typing.js";
 import { scoreAnswer } from "../../shared/progression.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";

@@ -72,21 +72,31 @@ export function dampen(stats, items, factor = 0.85) {
 
 /* -------------------------------------------------------------- unlocking -- */
 
-export function shouldUnlock({ unlocked, stats, since }, items) {
+/* `isExcluded` marks items the learner has switched off. They stop counting
+   toward the gate, otherwise switching off a shaky item would freeze
+   progression on an item you have deliberately stopped practising. */
+export function shouldUnlock({ unlocked, stats, since }, items, isExcluded = () => false) {
   if (unlocked >= items.length) return false;
   if (since < COOLDOWN) return false;
-  const newest = statOf(stats, items[unlocked - 1].id);
-  if (newest.a < MASTER_TRIES || newest.s < MASTER_SCORE) return false;
-  if (shakyItems(items, unlocked, stats).length <= slackFor(unlocked)) return true;
+  const newestItem = items[unlocked - 1];
+  if (!isExcluded(newestItem)) {
+    const newest = statOf(stats, newestItem.id);
+    if (newest.a < MASTER_TRIES || newest.s < MASTER_SCORE) return false;
+  }
+  const shaky = shakyItems(items, unlocked, stats).filter((it) => !isExcluded(it));
+  if (shaky.length <= slackFor(unlocked)) return true;
   return since >= PATIENCE && meanScore(items, unlocked, stats) >= 0.6;
 }
 
 /** Plain-language description of what stands between you and the next unlock. */
-export function gateLabel({ unlocked, stats }, items) {
+export function gateLabel({ unlocked, stats }, items, isExcluded = () => false) {
   if (unlocked >= items.length) return null;
-  const newest = statOf(stats, items[unlocked - 1].id);
-  if (newest.a < MASTER_TRIES || newest.s < MASTER_SCORE) return "settle the newest one";
-  const left = shakyItems(items, unlocked, stats).length;
+  const newestItem = items[unlocked - 1];
+  if (!isExcluded(newestItem)) {
+    const newest = statOf(stats, newestItem.id);
+    if (newest.a < MASTER_TRIES || newest.s < MASTER_SCORE) return "settle the newest one";
+  }
+  const left = shakyItems(items, unlocked, stats).filter((it) => !isExcluded(it)).length;
   return left > slackFor(unlocked) ? `${left} still shaky` : "next unlocks shortly";
 }
 
@@ -110,10 +120,10 @@ export function weightedPick(pool, weights) {
   return pool[pool.length - 1];
 }
 
-/** Pick an active item, weighted toward whatever you're weakest on. */
-export function pickWeak(items, { unlocked, stats }, lastId) {
-  const pool = activeItems(items, unlocked);
-  if (pool.length <= 1) return pool[0];
+/** Pick from an explicit pool, weighted toward whatever you're weakest on. */
+export function pickWeakFrom(pool, stats, lastId) {
+  if (!pool.length) return null;
+  if (pool.length === 1) return pool[0];
   const weights = pool.map((it) => {
     const r = statOf(stats, it.id);
     let w = Math.pow(1 - r.s, 1.5) * 3 + 0.15;
@@ -122,4 +132,9 @@ export function pickWeak(items, { unlocked, stats }, lastId) {
     return w;
   });
   return weightedPick(pool, weights);
+}
+
+/** Pick an active item, weighted toward whatever you're weakest on. */
+export function pickWeak(items, { unlocked, stats }, lastId) {
+  return pickWeakFrom(activeItems(items, unlocked), stats, lastId);
 }

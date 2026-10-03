@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WORD_BANK } from "./data.js";
 import { buildQuestion, advanceCursor } from "./quiz.js";
-import { baseProgress, scoreAnswer, shouldUnlock, pickWeak } from "../../shared/progression.js";
+import { baseProgress, scoreAnswer, shouldUnlock, pickWeakFrom, activeItems } from "../../shared/progression.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
 const SLICE = "vocabulary";
@@ -31,24 +31,35 @@ export function useVocabulary() {
 
   const [progress, setProgress] = useState(() => saved?.progress ?? freshProgress());
   const [session, setSession] = useState(() => emptySession(saved?.best ?? 0));
-  const [card, setCard] = useState(null);     // { kind: "intro" | "quiz", ... }
+  /* Words switched off by hand. They stop being prompted and stop counting
+     toward the unlock gate, but stay available as distractors — they are still
+     words you know, which is exactly what makes a good wrong answer. */
+  const [disabled, setDisabled] = useState(() => saved?.disabled ?? {});
+
+  const [card, setCard] = useState(null);     // { kind: "intro" | "quiz" | "empty", ... }
   const [result, setResult] = useState(null); // { correct, chosen }
 
   const progressRef = useRef(progress);
   const lastIdRef = useRef(null);
   const startedAt = useRef(Date.now());
 
+  const disabledRef = useRef(disabled);
   useEffect(() => { progressRef.current = progress; }, [progress]);
+  useEffect(() => { disabledRef.current = disabled; }, [disabled]);
 
-  const deal = useCallback((fromProgress) => {
+  const deal = useCallback((fromProgress, fromDisabled) => {
     const p = fromProgress ?? progressRef.current;
+    const off = fromDisabled ?? disabledRef.current;
     setResult(null);
 
     if (p.introQueue?.length) {
       setCard({ kind: "intro", word: WORD_BANK[p.introQueue[0]] });
     } else {
-      const word = pickWeak(WORD_BANK, p, lastIdRef.current);
-      setCard({ kind: "quiz", question: buildQuestion(word, p.unlocked, p.cursors) });
+      const pool = activeItems(WORD_BANK, p.unlocked).filter((w) => !off[w.id]);
+      const word = pickWeakFrom(pool, p.stats, lastIdRef.current);
+      setCard(word
+        ? { kind: "quiz", question: buildQuestion(word, p.unlocked, p.cursors) }
+        : { kind: "empty" });
     }
     startedAt.current = Date.now();
   }, []);
@@ -56,8 +67,8 @@ export function useVocabulary() {
   useEffect(() => { deal(); }, [deal]);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, best: session.best });
-  }, [progress, session.best]);
+    saveSlice(SLICE, { progress, best: session.best, disabled });
+  }, [progress, session.best, disabled]);
 
   /** Dismiss an introduction and move the word into rotation. */
   const acknowledge = useCallback(() => {
@@ -95,7 +106,7 @@ export function useVocabulary() {
         cursors: advanceCursor(p.cursors, word),
         since: p.since + 1,
       };
-      if (shouldUnlock(next, WORD_BANK)) {
+      if (shouldUnlock(next, WORD_BANK, (w) => disabledRef.current[w.id])) {
         next = {
           ...next,
           introQueue: [...next.introQueue, next.unlocked],
@@ -108,6 +119,23 @@ export function useVocabulary() {
   }, [card, result]);
 
   const next = useCallback(() => { if (result) deal(); }, [result, deal]);
+
+  /* Switching a word off mid-question is allowed; the current card stands and
+     the change takes effect on the next deal, except when it empties the pool. */
+  const toggleWord = useCallback((id) => {
+    const updated = { ...disabledRef.current };
+    if (updated[id]) delete updated[id]; else updated[id] = true;
+    disabledRef.current = updated;
+    setDisabled(updated);
+    const pool = activeItems(WORD_BANK, progressRef.current.unlocked).filter((w) => !updated[w.id]);
+    if (!pool.length || cardRef.current?.kind === "empty") deal(undefined, updated);
+  }, [deal]);
+
+  const enableAll = useCallback(() => {
+    disabledRef.current = {};
+    setDisabled({});
+    if (cardRef.current?.kind === "empty") deal(undefined, {});
+  }, [deal]);
 
   const unlockNext = useCallback(() => {
     const p = progressRef.current;
@@ -123,8 +151,13 @@ export function useVocabulary() {
     deal(updated);
   }, [deal]);
 
+  const cardRef = useRef(card);
+  useEffect(() => { cardRef.current = card; }, [card]);
+
   const resetAll = useCallback(() => {
     clearSlice(SLICE);
+    disabledRef.current = {};
+    setDisabled({});
     const fresh = freshProgress();
     progressRef.current = fresh;
     setProgress(fresh);
@@ -152,5 +185,8 @@ export function useVocabulary() {
     return () => document.removeEventListener("keydown", onKey);
   }, [card, result, answer, deal, acknowledge]);
 
-  return { card, result, progress, session, answer, next, acknowledge, unlockNext, resetAll };
+  return {
+    card, result, progress, session, disabled,
+    answer, next, acknowledge, unlockNext, resetAll, toggleWord, enableAll,
+  };
 }

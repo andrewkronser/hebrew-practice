@@ -10,7 +10,7 @@
    - Whole words come later: unpointed while you only know letters, pointed once
      you know the points they need. */
 
-import { CURRICULUM as LETTERS, NIQQUD, hebrewToKey } from "./layout.js";
+import { CURRICULUM as LETTERS, NIQQUD, hebrewToKey } from "../../shared/hebrewKeyboard.js";
 import { WORD_BANK } from "../vocabulary/data.js";
 import {
   baseProgress, activeItems, shakyItems, shouldUnlock as shouldUnlockItems,

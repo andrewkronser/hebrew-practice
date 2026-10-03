@@ -75,16 +75,25 @@
 .tick-miss { background: transparent; border: 1.5px solid var(--mantine-color-red-6); }
 
 /* Vocabulary word-bank cells */
+/* Word-bank cells are buttons: clicking one switches it out of practice. */
 .bank-cell {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 6px 8px;
+  min-width: 0;
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-sm);
   background: var(--mantine-color-body);
-  min-width: 0;
+  transition: opacity 120ms ease, border-color 120ms ease;
 }
+.bank-cell:hover { border-color: var(--mantine-color-tekhelet-6); }
+.bank-cell.bank-off { opacity: 0.4; border-style: dashed; }
+.bank-cell.bank-off:hover { opacity: 0.65; }
 
 /* Keyboard reference map */
 .kbd-key {
