@@ -15,23 +15,7 @@ npm run build    # static site into dist/
 npm run preview  # serve the built output
 ```
 
-### Node version
-
-Node 18, 20 or 22+ all work; there's a `.nvmrc` pinning 22 if you use nvm.
-
-The toolchain is deliberately on **Vite 6** rather than Vite 8. Vite 7 and 8
-bundle Rolldown, which imports `styleText` from `node:util` — an API that only
-landed in Node 20.12 — so they require Node 20.19+ or 22.12+ and fail at startup
-on anything older with:
-
-```
-SyntaxError: The requested module 'node:util' does not provide an export named 'styleText'
-```
-
-Vite 6 declares `^18.0.0 || ^20.0.0 || >=22.0.0` and has none of that
-constraint. If you're on a current Node and would rather be on Vite 8, bump
-`vite` and `@vitejs/plugin-react` in `package.json`; nothing in the source
-depends on the version.
+You need Node 18 or newer.
 
 ## Deploying to GitHub Pages
 
@@ -53,20 +37,6 @@ build works both at a user-page root and at a project-page subpath
 > from disk will not work, and neither will committing the source to a branch
 > and serving it directly — Pages has to run the build, which is what the
 > workflow does.
-
-## Troubleshooting
-
-**`does not provide an export named 'styleText'`** — your Node is older than
-20.12 and something pulled in Vite 7 or 8. Either run `nvm use` to pick up the
-pinned version, or check that `package.json` still has `vite: ^6`.
-
-**Blank page after deploying** — check that Settings → Pages has **Source** set
-to **GitHub Actions**, not "Deploy from a branch". Serving the repository
-directly gives you the unbuilt source and a blank `<div id="root">`.
-
-**Fonts look wrong, or transliteration shows boxes** — the Google Fonts request
-was blocked. See the typography note at the end of this file for how to vendor
-the three faces locally.
 
 ## How the progression works
 
