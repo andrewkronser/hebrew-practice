@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vite build --config vite.test.config.js && node test-nav.mjs"
+    "test": "vite build --config vite.test.config.js && node test-nav.mjs && node test-vocab.mjs"
   },
   "dependencies": {
     "@mantine/core": "^9.6.1",

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Box, Group, Stack, Text, UnstyledButton, Anchor, Tooltip } from "@mantine/core";
 import { CURRICULUM } from "../data.js";
-import { statOf, isMastered, gateLabel, readableWords, MASTER_SCORE } from "../trainer.js";
+import { statOf, isMastered } from "../../../shared/progression.js";
+import { gateLabel, readableWords } from "../trainer.js";
 
 /* The whole curriculum at a glance: unlocked characters fill as you settle them,
    locked ones stay dim. Position in the grid is order of introduction. */
@@ -114,5 +115,3 @@ function Stat({ label, value }) {
     </Text>
   );
 }
-
-export { MASTER_SCORE };

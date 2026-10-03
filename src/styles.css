@@ -73,3 +73,15 @@
 .tick { width: 7px; height: 18px; border-radius: 2px; background: var(--mantine-color-default-border); }
 .tick-hit { background: var(--mantine-color-tekhelet-6); }
 .tick-miss { background: transparent; border: 1.5px solid var(--mantine-color-red-6); }
+
+/* Vocabulary word-bank cells */
+.bank-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-body);
+  min-width: 0;
+}

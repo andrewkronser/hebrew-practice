@@ -33,6 +33,9 @@ s.textContent = fs.readFileSync("dist-test/bundle.js", "utf8");
 doc.body.appendChild(s);
 await new Promise((r) => setTimeout(r, 600));
 
+/* The bundle is injected as a <script> in <body>, so body.textContent
+   contains its source. Assertions must read only the rendered tree. */
+const rendered = () => doc.getElementById("root").textContent;
 const tick = () => new Promise((r) => setTimeout(r, 160));
 const txt = (sel) => doc.querySelector(sel)?.textContent?.trim() ?? null;
 const h1 = () => txt("h1");
@@ -55,7 +58,7 @@ const check = (name, got, want) => {
 
 console.log("── shell ──");
 check("mounts", doc.getElementById("root").children.length > 0, true);
-check("brand present", doc.body.textContent.includes("Hebrew practice"), true);
+check("brand present", rendered().includes("Hebrew Practice"), true);
 check("default page is Transliteration", h1(), "Transliteration");
 check("all four nav labels", ["Transliteration", "Vocabulary", "Roots", "Gender and Number"].every((l) => navLink(l)), true);
 // HashRouter leaves the hash empty until the first navigation and treats that
@@ -88,7 +91,7 @@ click(navLink("Roots"));
 await tick();
 check("Roots heading", h1(), "Roots");
 check("Roots hash", w.location.hash, "#/roots");
-check("stub text", doc.body.textContent.includes("Not built yet."), true);
+check("stub text", rendered().includes("Not built yet."), true);
 check("drill gone from DOM", answerInput(), null);
 
 // The Enter handler is registered on document by useTrainer. If it leaked, it
