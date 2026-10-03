@@ -60,7 +60,7 @@ console.log("── shell ──");
 check("mounts", doc.getElementById("root").children.length > 0, true);
 check("brand present", rendered().includes("Hebrew Practice"), true);
 check("default page is Transliteration", h1(), "Transliteration");
-check("all four nav labels", ["Transliteration", "Vocabulary", "Roots", "Gender and Number"].every((l) => navLink(l)), true);
+check("all five nav labels", ["Transliteration", "Vocabulary", "Learn to Type", "Roots", "Gender and Number"].every((l) => navLink(l)), true);
 // HashRouter leaves the hash empty until the first navigation and treats that
 // as "/", so either value is correct on a cold load.
 check("default hash is root", ["", "#/"].includes(w.location.hash), true);

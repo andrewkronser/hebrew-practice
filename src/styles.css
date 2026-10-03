@@ -85,3 +85,38 @@
   background: var(--mantine-color-body);
   min-width: 0;
 }
+
+/* Keyboard reference map */
+.kbd-key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 42px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--mantine-color-default-border);
+  border-bottom-width: 2px;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mantine-color-body);
+}
+.kbd-he { font-size: 1.05rem; line-height: 1; }
+.kbd-cap {
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--mantine-color-dimmed);
+  text-transform: uppercase;
+}
+.kbd-punct { opacity: 0.45; }
+.kbd-locked { opacity: 0.3; border-style: dashed; border-bottom-width: 1px; }
+.kbd-active {
+  border-color: var(--mantine-color-tekhelet-6);
+  background: var(--mantine-color-tekhelet-light);
+  box-shadow: 0 0 0 2px var(--mantine-color-tekhelet-light);
+}
+@media (max-width: 560px) {
+  .kbd-key { width: 30px; height: 36px; }
+  .kbd-he { font-size: 0.85rem; }
+  .kbd-cap { font-size: 0.5rem; }
+}
