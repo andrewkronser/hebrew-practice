@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Divider, Group, Paper, Stack, Text, Title } from "@mantine/core";
+import { Badge, Box, Button, Divider, Group, Paper, Stack, Switch, Text, Title } from "@mantine/core";
 import { useVocabulary } from "./useVocabulary.js";
 import { WordBank } from "./components/WordBank.jsx";
 import { StatsTape } from "../transliteration/components/ProgressGrid.jsx";
@@ -9,7 +9,15 @@ export default function VocabularyPage() {
 
   return (
     <Stack gap="lg">
-      <Title order={1} size="h2">Vocabulary</Title>
+      <Group justify="space-between" align="center">
+        <Title order={1} size="h2">Vocabulary</Title>
+        <Switch
+          size="sm"
+          label="Transliteration hint"
+          checked={v.showTranslit}
+          onChange={(e) => v.setShowTranslit(e.currentTarget.checked)}
+        />
+      </Group>
 
       <Paper withBorder radius="lg" p="xl" shadow="sm">
         {v.card.kind === "intro" ? (
@@ -22,7 +30,13 @@ export default function VocabularyPage() {
             </Text>
           </Stack>
         ) : (
-          <Question question={v.card.question} result={v.result} onAnswer={v.answer} onNext={v.next} />
+          <Question
+            question={v.card.question}
+            result={v.result}
+            showTranslit={v.showTranslit}
+            onAnswer={v.answer}
+            onNext={v.next}
+          />
         )}
       </Paper>
 
@@ -57,6 +71,7 @@ function Introduction({ word, onContinue }) {
         New word
       </Text>
       <Box className="hebrew glyph-word" dir="rtl">{word.he}</Box>
+      <Text className="translit" c="dimmed" fz="lg">{word.tr}</Text>
       <Group gap="xs" justify="center" wrap="wrap">
         {word.glosses.map((g) => (
           <Badge key={g} variant="light" color="tekhelet" size="lg" radius="sm">{g}</Badge>
@@ -72,12 +87,19 @@ function Introduction({ word, onContinue }) {
   );
 }
 
-function Question({ question, result, onAnswer, onNext }) {
+function Question({ question, result, showTranslit, onAnswer, onNext }) {
   const { word, options, answer } = question;
 
   return (
     <Stack gap="md" align="center">
-      <Box className="hebrew glyph-word" dir="rtl">{word.he}</Box>
+      <Stack gap={2} align="center">
+        <Box className="hebrew glyph-word" dir="rtl">{word.he}</Box>
+        {/* Reserve the line either way, so switching the hint on doesn't
+            shift the options under the cursor mid-question. */}
+        <Text className="translit" c="dimmed" fz="lg" mih="1.6em">
+          {showTranslit ? word.tr : "\u00A0"}
+        </Text>
+      </Stack>
 
       <Stack gap="xs" w="100%" maw={420}>
         {options.map((opt, i) => {
@@ -117,6 +139,8 @@ function Question({ question, result, onAnswer, onNext }) {
             </Text>
             <Text size="sm" ta="center">
               <Box component="span" className="hebrew" fz="lg">{word.he}</Box>
+              {" "}
+              <Text span className="translit" c="dimmed">{word.tr}</Text>
               {" — "}
               <Text span fw={600}>{answer}</Text>
             </Text>

@@ -122,9 +122,91 @@ export const CONFLICTS = [
   ["keli", "cherev"],     // weapon / sword
 ];
 
+/* Transliteration in Seow's system, shown as an optional hint and always in the
+   answer reveal.
+
+   27 of these are copied verbatim from the transliteration trainer's own word
+   list, so the two features cannot drift apart on a word they share — a test
+   asserts that. The other 38 are authored to the same conventions: soft
+   begadkefat underlined, four vowel classes, a final vowel-letter he in
+   parentheses. */
+const TRANSLITERATION = {
+  adam: "ʾāḏām",
+  adamah: "ʾăḏāmā(h)",
+  berit: "bərîṯ",
+  goy: "gôy",
+  davar: "dāḇār",
+  daat: "daʿaṯ",
+  zahav: "zāhāḇ",
+  chodesh: "ḥōḏeš",
+  chokhmah: "ḥoḵmā(h)",
+  kohen: "kōhēn",
+  kesef: "kesep̄",
+  ozen: "ʾōzen",
+  el: "ʾēl",
+  elohim: "ʾĕlōhîm",
+  em: "ʾēm",
+  erets: "ʾereṣ",
+  dam: "dām",
+  derekh: "dereḵ",
+  cherev: "ḥereḇ",
+  yad: "yāḏ",
+  lev: "lēḇ",
+  mayim: "mayim",
+  mishpat: "mišpāṭ",
+  nefesh: "nep̄eš",
+  ayin: "ʿayin",
+  peh: "pe(h)",
+  panim: "pānîm",
+  regel: "reḡel",
+  shamayim: "šāmayim",
+  even: "ʾeḇen",
+  adon: "ʾāḏôn",
+  or: "ʾôr",
+  ayil: "ʾayil",
+  enosh: "ʾĕnôš",
+  heikhal: "hêḵāl",
+  chayil: "ḥayil",
+  chesed: "ḥesed",
+  choshekh: "ḥōšeḵ",
+  lechem: "leḥem",
+  malakh: "malʾāḵ",
+  milchamah: "milḥāmā(h)",
+  maqom: "māqôm",
+  sus: "sûs",
+  avon: "ʿāwōn",
+  olah: "ʿôlā(h)",
+  peri: "pərî",
+  ruach: "rû(a)ḥ",
+  av: "ʾāḇ",
+  ohel: "ʾōhel",
+  ach: "ʾāḥ",
+  achot: "ʾāḥôṯ",
+  ish: "ʾîš",
+  ishah: "ʾiššā(h)",
+  bayit: "bayit",
+  ben: "bēn",
+  bat: "baṯ",
+  har: "har",
+  yom: "yôm",
+  yam: "yām",
+  keli: "kəlî",
+  maaseh: "maʿăśe(h)",
+  ir: "ʿîr",
+  am: "ʿam",
+  rosh: "rōʾš",
+  sar: "śar",
+};
+
 /* Flattened, in unlock order. `id` is what progression.js keys its stats on. */
 export const WORD_BANK = LISTS.flatMap((list) =>
-  list.words.map((w) => ({ ...w, id: w.key, listId: list.id, listLabel: list.label }))
+  list.words.map((w) => ({
+    ...w,
+    id: w.key,
+    tr: TRANSLITERATION[w.key],
+    listId: list.id,
+    listLabel: list.label,
+  }))
 );
 
 export const wordByKey = new Map(WORD_BANK.map((w) => [w.key, w]));

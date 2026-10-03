@@ -91,6 +91,11 @@ type(keyCap);
 await tick();
 check("Latin key accepted at its position", rendered().includes("Correct"), true);
 check("position-mode warning appears", rendered().includes("Typing key positions"), true);
+const closeBtn = doc.querySelector('[aria-label="Dismiss"]') ?? doc.querySelector(".mantine-Alert-closeButton");
+check("warning has a close button", Boolean(closeBtn), true);
+click(closeBtn);
+await tick();
+check("warning dismisses", rendered().includes("Typing key positions"), false);
 await tick(700);
 
 console.log("── a long run, then unlocking ──");

@@ -36,6 +36,10 @@ export function useVocabulary() {
      words you know, which is exactly what makes a good wrong answer. */
   const [disabled, setDisabled] = useState(() => saved?.disabled ?? {});
 
+  /* Transliteration under the prompt. Off by default: it's a crutch, and the
+     point of the drill is reading the Hebrew. Always shown in the reveal. */
+  const [showTranslit, setShowTranslit] = useState(() => saved?.showTranslit ?? false);
+
   const [card, setCard] = useState(null);     // { kind: "intro" | "quiz" | "empty", ... }
   const [result, setResult] = useState(null); // { correct, chosen }
 
@@ -67,8 +71,8 @@ export function useVocabulary() {
   useEffect(() => { deal(); }, [deal]);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, best: session.best, disabled });
-  }, [progress, session.best, disabled]);
+    saveSlice(SLICE, { progress, best: session.best, disabled, showTranslit });
+  }, [progress, session.best, disabled, showTranslit]);
 
   /** Dismiss an introduction and move the word into rotation. */
   const acknowledge = useCallback(() => {
@@ -186,7 +190,7 @@ export function useVocabulary() {
   }, [card, result, answer, deal, acknowledge]);
 
   return {
-    card, result, progress, session, disabled,
+    card, result, progress, session, disabled, showTranslit, setShowTranslit,
     answer, next, acknowledge, unlockNext, resetAll, toggleWord, enableAll,
   };
 }

@@ -104,5 +104,21 @@ check("a full cycle covers every sense of אדם", new Set(seen).size, adam.glos
 check("primary appears most in that cycle",
   seen.filter((g) => g === adam.glosses[0]).length, seen.length / 2);
 
+console.log("── vocabulary transliteration ──");
+const noTr = WORD_BANK.filter((w) => !w.tr).map((w) => w.key);
+check("every word has one", noTr.join(",") || "none", "none");
+/* The same Hebrew word appears in both features. If they ever disagree, one of
+   them is teaching the wrong thing. */
+const byHe = new Map(T_WORDS.map((t) => [t.he, t]));
+const shared = WORD_BANK.filter((v) => byHe.has(v.he));
+const conflicts = shared.filter((v) => v.tr !== byHe.get(v.he).a)
+  .map((v) => `${v.key}: ${v.tr} vs ${byHe.get(v.he).a}`);
+console.log(`   ${shared.length} words appear in both features`);
+check("no feature disagrees with the other", conflicts.join(" | ") || "none", "none");
+/* Authored values should use the same notation as the copied ones. */
+const latin = /^[a-zɛəʾʿ()ʼ'\u0101\u0113\u012B\u014D\u016B\u00E2\u00EA\u00EE\u00F4\u00FB\u0103\u0115\u014F\u1E25\u1E6D\u1E63\u0161\u015B\u1E07\u1E0F\u1E35\u1E6F\u1E21\u0304\u0073\u0070 -]+$/i;
+const odd = WORD_BANK.filter((w) => !latin.test(w.tr)).map((w) => `${w.key}:${w.tr}`);
+check("all transliterations use the expected notation", odd.join(",") || "none", "none");
+
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
 process.exit(results.every(Boolean) ? 0 : 1);

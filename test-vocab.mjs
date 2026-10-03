@@ -118,6 +118,36 @@ click(btn("Got it"));
 await tick();
 check("bank grew by one", doc.querySelectorAll(".bank-cell").length, before + 1);
 
+console.log("\n── transliteration hint ──");
+const switchBox = () => [...doc.querySelectorAll("input[type=checkbox]")]
+  .find((i) => i.closest("label")?.textContent.includes("Transliteration"))
+  ?? doc.querySelector("input[type=checkbox]");
+check("hint switch present", Boolean(switchBox()), true);
+check("hint off by default", switchBox().checked, false);
+/* With the hint off, the prompt's transliteration must not be on screen. */
+const slice0 = JSON.parse(w.localStorage.getItem("hebrew-practice:vocabulary") || "null");
+check("hint state persisted as off", slice0?.showTranslit ?? false, false);
+const translitOnScreen = () => [...doc.querySelectorAll(".translit")]
+  .map((e) => e.textContent.trim()).filter(Boolean);
+const beforeHint = translitOnScreen().length;
+switchBox().click();
+await tick();
+check("switch turns on", switchBox().checked, true);
+check("a transliteration appears", translitOnScreen().length > beforeHint, true);
+const slice1 = JSON.parse(w.localStorage.getItem("hebrew-practice:vocabulary") || "null");
+check("hint state persisted as on", slice1?.showTranslit, true);
+switchBox().click();
+await tick();
+check("switch turns back off", switchBox().checked, false);
+
+console.log("\n── transliteration always in the reveal ──");
+click(optionButtons()[0]);
+await tick();
+check("reveal is showing", /Correct|Not quite/.test(rendered()), true);
+check("transliteration shown even with the hint off", translitOnScreen().length > 0, true);
+click(btn("Next"));
+await tick();
+
 console.log("\n── filter and switching words off ──");
 const cells = () => [...doc.querySelectorAll(".bank-cell")];
 const filterBox = () => doc.querySelector('input[aria-label="Filter words"]');

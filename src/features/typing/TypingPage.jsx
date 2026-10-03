@@ -1,4 +1,5 @@
 import { Alert, Anchor, Box, Group, Kbd, Paper, SegmentedControl, Stack, Text, TextInput, Title } from "@mantine/core";
+import { useState } from "react";
 import { useTyping } from "./useTyping.js";
 import { hebrewToKey, niqqudHint } from "../../shared/hebrewKeyboard.js";
 import { CURRICULUM, active, gateLabel, unlockedChars, typableWords, POINTED_WORDS, BARE_WORDS } from "./typing.js";
@@ -10,6 +11,9 @@ const keyFor = (ch) => hebrewToKey.get(ch);
 
 export default function TypingPage() {
   const t = useTyping();
+  /* Dismissed for this visit only — if the Hebrew input source is still not
+     active on a reload, the warning is worth showing again. */
+  const [noticeClosed, setNoticeClosed] = useState(false);
   if (!t.card) return null;
 
   const { item, prompt, isIntro } = t.card;
@@ -24,8 +28,15 @@ export default function TypingPage() {
     <Stack gap="lg">
       <Title order={1} size="h2">Learn to Type</Title>
 
-      {t.positionMode && (
-        <Alert color="yellow" variant="light" title="Typing key positions">
+      {t.positionMode && !noticeClosed && (
+        <Alert
+          color="yellow"
+          variant="light"
+          title="Typing key positions"
+          withCloseButton
+          closeButtonLabel="Dismiss"
+          onClose={() => setNoticeClosed(true)}
+        >
           No Hebrew input source seems to be active, so Latin keys are being accepted
           at the positions they'd produce. Points have no bare-key equivalent, so
           switch your OS input to Hebrew before the niqqud stage.
