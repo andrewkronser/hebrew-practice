@@ -47,15 +47,19 @@ export function meanScore(items, unlocked, stats) {
 
 /* ---------------------------------------------------------------- scoring -- */
 
-/** Returns a new stats object; never mutates the one passed in. */
-export function scoreAnswer(stats, item, { correct, ms, hinted }) {
+/* `weight` scales how much one answer moves the score, for when not every
+   question about an item carries the same evidence. A vocabulary word scored
+   per-word but asked per-sense is the case this exists for: missing a rare
+   fifth gloss should not condemn a word whose main meaning you know cold.
+   Default 1 — every existing caller behaves exactly as before. */
+export function scoreAnswer(stats, item, { correct, ms, hinted, weight = 1 }) {
   const r = statOf(stats, item.id);
   const next = { a: r.a + 1, s: r.s };
   if (correct) {
     const fast = ms < FAST_MS && !hinted;
-    next.s = r.s + (1 - r.s) * (fast ? 0.34 : 0.18);
+    next.s = r.s + (1 - r.s) * (fast ? 0.34 : 0.18) * weight;
   } else {
-    next.s = r.s * 0.55;
+    next.s = r.s * (1 - (1 - 0.55) * weight);
   }
   return { ...stats, [item.id]: next };
 }
@@ -170,7 +174,9 @@ export const DEFAULT_PACING = {
   penalty: 0.55,
   slackFraction: 0.25,
   slackMin: 2,
-  unlockStep: 1,
+  /* Items added per unlock, at most. 1 keeps the one-at-a-time behaviour.
+     Above 1 the step is earned rather than fixed — see stepFor below. */
+  maxStep: 1,
 };
 
 /**
@@ -192,58 +198,81 @@ export function createProgression({ items, pacing = {}, isExcluded, weightFor } 
     const r = statOf(stats, item.id);
     return r.a >= P.masterTries && r.s >= P.masterScore;
   };
-  const shaky = (unlocked, stats) =>
-    active(unlocked).filter((it) => !mastered(stats, it) && !excluded(it));
+  const shaky = (unlocked, stats, skip = excluded) =>
+    active(unlocked).filter((it) => !mastered(stats, it) && !skip(it));
   const mean = (unlocked, stats) => {
     const pool = active(unlocked);
     if (!pool.length) return 0;
     return pool.reduce((t, it) => t + statOf(stats, it.id).s, 0) / pool.length;
   };
 
-  const score = (stats, item, { correct, ms, hinted }) => {
+  const score = (stats, item, { correct, ms, hinted, weight = 1 }) => {
     const r = statOf(stats, item.id);
     const next = { a: r.a + 1, s: r.s };
     if (correct) {
       const fast = ms < P.fastMs && !hinted;
-      next.s = r.s + (1 - r.s) * (fast ? P.gainFast : P.gainSlow);
+      next.s = r.s + (1 - r.s) * (fast ? P.gainFast : P.gainSlow) * weight;
     } else {
-      next.s = r.s * P.penalty;
+      next.s = r.s * (1 - (1 - P.penalty) * weight);
     }
     return { ...stats, [item.id]: next };
   };
 
-  const ready = ({ unlocked, stats, since }) => {
+  const ready = ({ unlocked, stats, since }, skip = excluded) => {
     if (unlocked >= items.length) return false;
     if (since < P.cooldown) return false;
     const newestItem = items[unlocked - 1];
-    if (newestItem && !excluded(newestItem)) {
+    if (newestItem && !skip(newestItem)) {
       const newest = statOf(stats, newestItem.id);
       if (newest.a < P.masterTries || newest.s < P.masterScore) return false;
     }
-    if (shaky(unlocked, stats).length <= slack(unlocked)) return true;
+    if (shaky(unlocked, stats, skip).length <= slack(unlocked)) return true;
     return since >= P.patience && mean(unlocked, stats) >= 0.6;
   };
 
-  /** Returns the progress with the next step unlocked; `since` restarts. */
-  const unlock = (progress) => ({
+  /* How many items this unlock is worth.
+
+     The obvious signal — how quickly the cooldown was cleared — turns out to be
+     useless: the cooldown is never what holds the gate shut. Measured on the
+     vocabulary bank, the median gap between unlocks is 19 to 54 answers against
+     a cooldown of 4. What actually binds is "the newest item must be mastered",
+     and with forty-odd items in rotation the newest one takes that long just to
+     come up often enough.
+
+     So the step is earned from the state of the active set instead. Headroom is
+     how far below the shaky limit you are: 1 when nothing is shaky, 0 when you
+     are scraping through the gate. A learner at 97% accuracy sits at 0.93 and
+     was still being handed one item at a time. It is self-correcting — take
+     four at once, go shaky, and the next step drops straight back to one. */
+  const stepFor = ({ unlocked, stats }, skip = excluded) => {
+    if (P.maxStep <= 1) return 1;
+    const limit = slack(unlocked);
+    const headroom = limit > 0
+      ? Math.max(0, 1 - shaky(unlocked, stats, skip).length / limit)
+      : 1;
+    return Math.max(1, Math.min(P.maxStep, Math.round(1 + headroom * (P.maxStep - 1))));
+  };
+
+  /** Returns the progress with the earned step unlocked; `since` restarts. */
+  const unlock = (progress, skip = excluded) => ({
     ...progress,
-    unlocked: Math.min(items.length, progress.unlocked + P.unlockStep),
+    unlocked: Math.min(items.length, progress.unlocked + stepFor(progress, skip)),
     since: 0,
   });
 
-  const label = ({ unlocked, stats }) => {
+  const label = ({ unlocked, stats }, skip = excluded) => {
     if (unlocked >= items.length) return null;
     const newestItem = items[unlocked - 1];
-    if (newestItem && !excluded(newestItem)) {
+    if (newestItem && !skip(newestItem)) {
       const newest = statOf(stats, newestItem.id);
       if (newest.a < P.masterTries || newest.s < P.masterScore) return "settle the newest one";
     }
-    const left = shaky(unlocked, stats).length;
+    const left = shaky(unlocked, stats, skip).length;
     return left > slack(unlocked) ? `${left} still shaky` : "next unlocks shortly";
   };
 
-  const pick = ({ unlocked, stats }, lastId) => {
-    const pool = active(unlocked).filter((it) => !excluded(it));
+  const pick = ({ unlocked, stats }, lastId, skip = excluded) => {
+    const pool = active(unlocked).filter((it) => !skip(it));
     if (pool.length <= 1) return pool[0] ?? null;
     const weights = pool.map((it) => {
       const r = statOf(stats, it.id);
@@ -266,6 +295,7 @@ export function createProgression({ items, pacing = {}, isExcluded, weightFor } 
     meanScore: mean,
     scoreAnswer: score,
     shouldUnlock: ready,
+    stepFor,
     unlock,
     gateLabel: label,
     pickWeak: pick,

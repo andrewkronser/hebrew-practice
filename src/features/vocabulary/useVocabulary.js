@@ -9,14 +9,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { WORD_BANK } from "./data.js";
-import { buildFor, advanceCursor, DIRECTIONS } from "./quiz.js";
-import { baseProgress, scoreAnswer, shouldUnlock, pickWeakFrom, activeItems } from "../../shared/progression.js";
+import { buildFor, advanceCursor, answerWeight, DIRECTIONS } from "./quiz.js";
+import { baseProgress, activeItems, createProgression } from "../../shared/progression.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
 const SLICE = "vocabulary";
 
 /** Four words, so a four-option question can be built from the start. */
 export const START_UNLOCKED = 4;
+
+/* Vocabulary earns its unlock step from how settled the rotation is, rather
+   than taking one word at a time. A learner answering well reaches the far end
+   of the bank roughly twice as fast; one who is struggling still moves at one
+   word per unlock, because the headroom that buys the bigger step is gone. */
+const engine = createProgression({
+  items: WORD_BANK,
+  pacing: { startUnlocked: START_UNLOCKED, maxStep: 4 },
+});
 
 export const DIRECTION_IDS = Object.keys(DIRECTIONS);
 
@@ -96,8 +105,8 @@ export function useVocabulary() {
       setCard({ kind: "intro", word: WORD_BANK[p.introQueue[0]] });
     } else {
       const dir = directionRef.current;
-      const pool = activeItems(WORD_BANK, p.unlocked).filter((w) => !off[w.id]);
-      const word = pickWeakFrom(pool, p.stats[dir] ?? {}, lastIdRef.current);
+      const skip = (w) => Boolean(off[w.id]);
+      const word = engine.pickWeak(viewFor(p, dir), lastIdRef.current, skip);
       setCard(word
         ? { kind: "quiz", direction: dir, question: buildFor(dir, word, p.unlocked, p.cursors[dir] ?? {}) }
         : { kind: "empty" });
@@ -141,18 +150,30 @@ export function useVocabulary() {
     });
 
     const dir = directionRef.current;
+    /* Per-word score, per-sense question: a miss on a rare gloss should not
+       condemn a word whose main meaning is solid. */
+    const weight = answerWeight(card.question);
     setProgress((p) => {
+      const skip = (w) => Boolean(disabledRef.current[w.id]);
       let next = {
         ...p,
-        stats: { ...p.stats, [dir]: scoreAnswer(p.stats[dir] ?? {}, word, { correct, ms, hinted: false }) },
+        stats: {
+          ...p.stats,
+          [dir]: engine.scoreAnswer(p.stats[dir] ?? {}, word, { correct, ms, hinted: false, weight }),
+        },
         cursors: { ...p.cursors, [dir]: advanceCursor(p.cursors[dir] ?? {}, word, dir) },
         since: p.since + 1,
       };
-      if (shouldUnlock(viewFor(next, dir), WORD_BANK, (w) => disabledRef.current[w.id])) {
+      const view = viewFor(next, dir);
+      if (engine.shouldUnlock(view, skip)) {
+        const step = Math.min(engine.stepFor(view, skip), WORD_BANK.length - next.unlocked);
         next = {
           ...next,
-          introQueue: [...next.introQueue, next.unlocked],
-          unlocked: next.unlocked + 1,
+          introQueue: [
+            ...next.introQueue,
+            ...Array.from({ length: step }, (_, i) => next.unlocked + i),
+          ],
+          unlocked: next.unlocked + step,
           since: 0,
         };
       }

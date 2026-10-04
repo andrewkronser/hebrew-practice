@@ -3,8 +3,9 @@
 import { WORD_BANK } from "./src/features/vocabulary/data.js";
 import {
   glossOrder, buildQuestion, buildReverseQuestion, advanceCursor, normalizeGloss,
-  promptableGlosses, OPTION_COUNT,
+  promptableGlosses, answerWeight, buildFor, OPTION_COUNT, PRIMARY_SHARE, SECONDARY_WEIGHT,
 } from "./src/features/vocabulary/quiz.js";
+import { createProgression, scoreAnswer as sharedScore } from "./src/shared/progression.js";
 import { FORMS, CELLS, SEED_SIZE, isCorrectCell } from "./src/features/gender-number/data.js";
 import { pickForm, correctCells, engine, PACING } from "./src/features/gender-number/drill.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
@@ -106,8 +107,99 @@ for (let i = 0; i < glossOrder(adam.glosses.length).length; i++) {
   cursors = advanceCursor(cursors, adam);
 }
 check("a full cycle covers every sense of אדם", new Set(seen).size, adam.glosses.length);
-check("primary appears most in that cycle",
-  seen.filter((g) => g === adam.glosses[0]).length, seen.length / 2);
+/* The primary used to be exactly half the cycle; it is now PRIMARY_SHARE. */
+const primaryHits = seen.filter((g) => g === adam.glosses[0]).length;
+check("primary dominates the cycle", primaryHits > seen.length / 2, true);
+check("primary share matches the configured value",
+  Math.abs(primaryHits / seen.length - PRIMARY_SHARE) < 0.05, true);
+
+console.log("── the primary sense carries a fixed share ──");
+/* The share must not drift with sense count: that was the bug that made
+   multi-sense words look fine in an early simulation. */
+const shares = [2, 3, 4, 5].map((n) => {
+  const o = glossOrder(n);
+  return { n, share: o.filter((x) => x === 0).length / o.length, covers: new Set(o).size === n };
+});
+check("every sense still reached", shares.every((x) => x.covers), true);
+check("share identical for every sense count",
+  new Set(shares.map((x) => x.share.toFixed(3))).size, 1);
+check("share is near the configured value",
+  Math.abs(shares[0].share - PRIMARY_SHARE) < 0.05, true);
+
+console.log("── a secondary sense moves the score less ──");
+const before = { w: { s: 0.8, a: 4 } };
+const hardMiss = sharedScore(before, { id: "w" }, { correct: false, ms: 2000 }).w.s;
+const softMiss = sharedScore(before, { id: "w" }, { correct: false, ms: 2000, weight: SECONDARY_WEIGHT }).w.s;
+check("a weighted miss costs less than a full one", softMiss > hardMiss, true);
+check("it still costs something", softMiss < 0.8, true);
+check("default weight is unchanged", hardMiss.toFixed(4), (0.8 * 0.55).toFixed(4));
+const multi = WORD_BANK.find((w) => promptableGlosses(w).length > 2);
+check("primary questions weigh full",
+  answerWeight(buildFor("he-en", multi, 20, { [multi.id]: 0 })), 1);
+
+console.log("── multi-sense words no longer dominate ──");
+/* Steady state on a fixed pool, so the only variable is the word itself. */
+const steadyEngine = createProgression({ items: WORD_BANK, pacing: { startUnlocked: 40 } });
+function inflation(weighted) {
+  const POOL = 40;
+  let p = { unlocked: POOL, stats: {}, since: 0 }, cursors = {}, last = null;
+  const seen = new Map(WORD_BANK.slice(0, POOL).map((w) => [w.id, 0]));
+  for (let i = 0; i < 60000; i++) {
+    const word = steadyEngine.pickWeak(p, last);
+    const q = buildFor("he-en", word, POOL, cursors);
+    const ok = Math.random() < (q.primary ? 0.95 : 0.6);
+    p = { ...p, stats: steadyEngine.scoreAnswer(p.stats, word, {
+      correct: ok, ms: 2000, weight: weighted ? answerWeight(q) : 1 }) };
+    cursors = advanceCursor(cursors, word, "he-en");
+    seen.set(word.id, seen.get(word.id) + 1);
+    last = word.id;
+  }
+  const buckets = new Map();
+  for (const w of WORD_BANK.slice(0, POOL)) {
+    const c = promptableGlosses(w).length;
+    if (!buckets.has(c)) buckets.set(c, []);
+    buckets.get(c).push(seen.get(w.id));
+  }
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const base = mean(buckets.get(1));
+  return Math.max(...[...buckets.values()].map((v) => mean(v) / base));
+}
+const unweighted = inflation(false), weighted = inflation(true);
+console.log(`   worst-case prompt inflation: ${unweighted.toFixed(2)}x unweighted -> ${weighted.toFixed(2)}x weighted`);
+check("weighting reduces it", weighted < unweighted, true);
+check("multi-sense words stay within 1.35x of single-sense", weighted < 1.35, true);
+
+console.log("── the unlock step is earned ──");
+const accel = createProgression({ items: WORD_BANK, pacing: { startUnlocked: 4, maxStep: 4 } });
+const plain = createProgression({ items: WORD_BANK, pacing: { startUnlocked: 4 } });
+const pristine = Object.fromEntries(WORD_BANK.map((w) => [w.id, { s: 0.95, a: 5 }]));
+check("default pacing never steps by more than one",
+  plain.stepFor({ unlocked: 20, stats: pristine }), 1);
+check("a settled rotation earns the full step",
+  accel.stepFor({ unlocked: 20, stats: pristine }), 4);
+check("an unsettled one does not",
+  accel.stepFor({ unlocked: 20, stats: {} }), 1);
+
+/* Acceleration must not leave a weak learner behind, and must actually help a
+   strong one. */
+function finish(eng, acc) {
+  let p = eng.emptyProgress(), n = 0;
+  while (n < 300000 && p.unlocked < WORD_BANK.length) {
+    const it = eng.pickWeak(p, null);
+    p = { ...p, stats: eng.scoreAnswer(p.stats, it, { correct: Math.random() < acc, ms: 2000 }), since: p.since + 1 };
+    n++;
+    if (eng.shouldUnlock(p)) p = eng.unlock(p);
+  }
+  return p.unlocked >= WORD_BANK.length ? n : null;
+}
+for (const acc of [0.5, 0.75, 0.95]) {
+  const a = finish(accel, acc);
+  console.log(`   acc ${acc}: ${a ?? "stalled"} answers to the full bank`);
+  check(`accuracy ${acc} still reaches every word`, Boolean(a), true);
+}
+const slow = finish(plain, 0.95), quick = finish(accel, 0.95);
+console.log(`   strong learner: ${slow} -> ${quick} answers`);
+check("a strong learner gets there meaningfully sooner", quick < slow * 0.8, true);
 
 console.log("── the reverse direction is unambiguous ──");
 /* Reversed, the prompt is an English sense and every word carrying that sense

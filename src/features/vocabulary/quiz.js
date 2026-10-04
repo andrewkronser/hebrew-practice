@@ -126,7 +126,7 @@ export function buildQuestion(word, unlocked, cursors = {}) {
     ...distractors.map((d) => ({ ...d, correct: false })),
   ]);
 
-  return { word, answer, glossIndex, options };
+  return { word, answer, glossIndex, primary: glossIndex === 0, options };
 }
 
 /**
@@ -149,19 +149,42 @@ export function buildReverseQuestion(word, unlocked, cursors = {}) {
     ...distractors,
   ]);
 
-  return { word, prompt, answer: word.he, glossIndex, options, reverse: true };
+  return { word, prompt, answer: word.he, glossIndex, primary: glossIndex === 0, options, reverse: true };
 }
 
 /* The first gloss is the primary sense, so it comes up far more than the rest.
-   Interleaving it with each of the others — 0,1,0,2,0,3 — gives it half of all
-   appearances while still guaranteeing every sense is reached, which a simple
-   weighted random could not promise. */
-export function glossOrder(count) {
+   The schedule repeats sense 0 before each of the others — 0,0,1,0,0,2 — which
+   gives the primary a fixed share however many senses the word has, while still
+   guaranteeing every sense is reached. A weighted random could not promise that
+   second part.
+
+   Why two thirds rather than half: a word with several senses gets missed more
+   often, so the weakness weighting surfaces it more. Measured on this bank, any
+   word with two or more senses was coming up twice as often as a single-sense
+   word. Leaning on the primary sense, together with SECONDARY_WEIGHT below,
+   brings that down to about 1.2x. */
+export const PRIMARY_SHARE = 0.65;
+
+/* How much a question about a secondary sense moves the word's score, relative
+   to one about its main meaning. Scoring is per-word but difficulty is
+   per-sense, so without this a miss on a rare gloss drags down a word you know
+   perfectly well. */
+export const SECONDARY_WEIGHT = 0.25;
+
+export function glossOrder(count, share = PRIMARY_SHARE) {
   if (count <= 1) return [0];
+  /* repeats/(repeats+1) === share, independent of how many senses there are. */
+  const repeats = Math.max(1, Math.round(share / (1 - share)));
   const out = [];
-  for (let i = 1; i < count; i++) out.push(0, i);
+  for (let i = 1; i < count; i++) {
+    for (let k = 0; k < repeats; k++) out.push(0);
+    out.push(i);
+  }
   return out;
 }
+
+/** What one answer about this question is worth, for scoring. */
+export const answerWeight = (question) => (question.primary ? 1 : SECONDARY_WEIGHT);
 
 /** Advance this word's cursor to its next scheduled sense. */
 export function advanceCursor(cursors, word, direction = "he-en") {

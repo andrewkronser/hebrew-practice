@@ -7,7 +7,9 @@
    proving something you already know. The settings below were chosen by
    simulation: a learner at 80% accuracy reaches all 116 forms in roughly 1,200
    answers, against 13,000 on the defaults — and on the defaults a learner at 50%
-   stalled permanently at 85 forms.
+   stalled permanently at 85 forms. The unlock step is earned from how settled
+   the rotation is rather than fixed, so a strong learner takes up to four forms
+   at a time and a struggling one still takes them singly.
 
    Below about 35% accuracy the rotation does stop growing. On a six-option grid
    pure guessing scores 17%, so that threshold asks for meaningfully better than
@@ -32,7 +34,7 @@ export const PACING = {
   gainFast: 0.5,
   gainSlow: 0.3,
   penalty: 0.45,
-  unlockStep: 2,
+  maxStep: 4,
 };
 
 export const engine = createProgression({
