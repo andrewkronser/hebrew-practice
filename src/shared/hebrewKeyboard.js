@@ -121,8 +121,8 @@ export const NIQQUD = [
   { id: "n-sheva",   he: "\u05B0", name: "sheva",        win: "a",  mac: "0", confident: true },
   { id: "n-dagesh",  he: "\u05BC", name: "dagesh",       win: "s",  mac: ",", confident: true },
   { id: "n-qubuts",  he: "\u05BB", name: "qubuts",       win: "\\", mac: "8", confident: true },
-  { id: "n-shin",    he: "\u05C1", name: "shin dot",     win: "w",  mac: "m", confident: true },
-  { id: "n-sin",     he: "\u05C2", name: "sin dot",      win: "q",  mac: "a", confident: true },
+  { id: "n-shin",    he: "\u05C1", name: "shin dot",     win: "w",  mac: "m", carrier: "\u05E9", macComposes: "\u05E9", confident: true },
+  { id: "n-sin",     he: "\u05C2", name: "sin dot",      win: "q",  mac: "a", carrier: "\u05E9", macComposes: "\u05E9", confident: true },
   { id: "n-hpatah",  he: "\u05B2", name: "hataf patah",  win: "[",  mac: "1", confident: true },
   { id: "n-hqamats", he: "\u05B3", name: "hataf qamats", win: "r",  mac: "2", confident: true },
   { id: "n-hsegol",  he: "\u05B1", name: "hataf segol",  win: "c",  mac: "3", confident: true },
@@ -142,6 +142,20 @@ export function capForCode(code) {
 }
 
 export const niqqudById = new Map(NIQQUD.map((n) => [n.he, n]));
+
+/* What to hang a bare point on when showing it by itself. Most take a neutral
+   ב, but the shin and sin dots only ever occur on ש — on anything else they
+   are not a thing the reader has ever seen. */
+export const DEFAULT_CARRIER = "\u05D1";
+export const carrierFor = (point) => niqqudById.get(point)?.carrier ?? DEFAULT_CARRIER;
+
+/* A few keys emit a letter *and* its point in one press. On macOS the shin and
+   sin dot keys type the whole שׁ / שׂ rather than a bare dot — reported from the
+   machine, and it matters only for the hint: the reference map must not also
+   tell you to press ש, because doing both would give you two shins. Grading is
+   on the string produced, so either input route passes regardless. */
+export const composedLetter = (point, os) =>
+  (os === "mac" ? niqqudById.get(point)?.macComposes : null) ?? null;
 
 /** Which cap a point sits on: what we saw you press, else the published guess. */
 export function niqqudKey(point, os, learned = {}) {

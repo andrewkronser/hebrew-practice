@@ -123,6 +123,24 @@ enter(input);
 await tick();
 check("drill works after remount", Boolean(doc.querySelector(".reveal-name")), true);
 
+console.log("\n── per-section container width ──");
+/* Gender and Number carries a syllabus beside the drill and opts into a wider
+   container; everything else keeps the narrow reading width. */
+const containerWidth = () => {
+  const el = doc.querySelector("[class*=mantine-Container-root]");
+  return el?.style?.getPropertyValue("--container-size") || "(default)";
+};
+click(navLink("Transliteration"));
+await tick();
+const narrow = containerWidth();
+click(navLink("Gender and Number"));
+await tick();
+const wide = containerWidth();
+check("the wide section differs from the default", wide !== narrow, true);
+click(navLink("Vocabulary"));
+await tick();
+check("other sections keep the narrow width", containerWidth(), narrow);
+
 console.log("\n── unknown route ──");
 w.location.hash = "#/does-not-exist";
 await tick(); await tick();

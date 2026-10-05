@@ -28,13 +28,20 @@ export default function TransliterationPage() {
         Transliteration
       </Title>
 
-      <Group gap="sm">
+      {/* Every other section puts its control straight into the page Stack, so
+          it fills the reading column. These sat in a Group at their natural
+          widths, which read as a different kind of control. One per row, each
+          spanning the column, matches Vocabulary and Gender and Number — a
+          two-up grid left the odd one stranded at half width. */}
+      <Stack gap="sm">
         <SegmentedControl
+          fullWidth
           size="xs" value={settings.track} onChange={t.changeTrack}
           data={[{ label: "Guided", value: "guided" }, { label: "Free practice", value: "free" }]}
         />
         {!guided && (
           <SegmentedControl
+            fullWidth
             size="xs" value={settings.freeMode} onChange={t.changeFreeMode}
             data={[
               { label: "Letters", value: "letters" },
@@ -44,16 +51,18 @@ export default function TransliterationPage() {
           />
         )}
         <SegmentedControl
+          fullWidth
           size="xs" value={settings.style} onChange={t.changeStyle}
           data={[{ label: "Everyday", value: "everyday" }, { label: "Seow", value: "seow" }]}
         />
         {seow && (
           <SegmentedControl
+            fullWidth
             size="xs" value={settings.strict} onChange={t.changeStrict}
             data={[{ label: "Forgiving", value: "forgiving" }, { label: "Exact marks", value: "exact" }]}
           />
         )}
-      </Group>
+      </Stack>
 
       <Paper withBorder radius="lg" p="xl" shadow="sm">
         <Stack gap="md" align="center">

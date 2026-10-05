@@ -17,7 +17,13 @@
   text-align: center;
   word-break: break-word;
 }
-.glyph-word { font-size: clamp(2.8rem, 11vw, 4.1rem); }
+.glyph-word {
+  font-size: clamp(2.8rem, 11vw, 4.1rem);
+  /* Body leading on a 4.1rem glyph reserved ~102px of line box for a 66px
+     character. Pointed Hebrew still needs headroom above for holam and below
+     for the vowels, so this is tightened rather than set to 1. */
+  line-height: 1.15;
+}
 
 .answer-input {
   font-family: var(--translit-font);
@@ -131,16 +137,199 @@
 }
 
 /* Niqqud drawn on the key they actually live on */
-.kbd-key { position: relative; }
+.kbd-key { position: relative; padding: 0; }
+
+/* The letter fills the cell; the point chip sits over its corner. Both can be
+   buttons, so neither may contain the other. */
+.kbd-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+.kbd-hit { cursor: pointer; }
+.kbd-key:has(.kbd-face.kbd-hit:hover) {
+  border-color: var(--mantine-color-tekhelet-6);
+  background: var(--mantine-color-tekhelet-light);
+}
+.kbd-face.kbd-hit:active { transform: translateY(1px); }
+.kbd-niqqud.kbd-hit:hover {
+  background: var(--mantine-color-tekhelet-6);
+  color: var(--mantine-color-white);
+}
+.kbd-niqqud.kbd-hit:active { transform: translateY(1px); }
 .kbd-niqqud {
   position: absolute;
+  font-family: inherit;
+  appearance: none;
   top: 2px;
   inset-inline-end: 3px;
   font-size: 0.72rem;
   line-height: 1;
-  color: var(--mantine-color-tekhelet-6);
-  border: 1px dotted var(--mantine-color-tekhelet-6);
-  border-radius: 2px;
-  padding: 0 1px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  /* Filled rather than outlined: an accent-coloured glyph on the key's own
+     background was too faint to read at this size, in either theme. */
+  background: var(--mantine-color-tekhelet-light);
+  color: var(--mantine-color-tekhelet-light-color);
+  border: 1px dotted var(--mantine-color-tekhelet-filled);
 }
 .kbd-niqqud.kbd-seen { border-style: solid; }
+
+/* ---- which part of a key is being asked for ----------------------------
+
+   A key carries a letter and, often, a point on its ⌥/AltGr layer. The two
+   are asked for independently, so they highlight independently. The chip's
+   resting fill is tekhelet-light, which is also what .kbd-active paints the
+   key — so a lit key used to swallow its own chip whole, and the shin and
+   sin dots simply disappeared at the moment they were being drilled. */
+
+/* The point is wanted: ring the key, but leave its background alone so the
+   chip still reads against it. */
+.kbd-point-wanted {
+  border-color: var(--mantine-color-tekhelet-6);
+  box-shadow: 0 0 0 2px var(--mantine-color-tekhelet-light);
+}
+
+/* The chip itself, when it is the thing to press. Filled accent, so it stands
+   clear whether or not the key underneath is also lit. */
+.kbd-niqqud.kbd-point-active {
+  background: var(--mantine-color-tekhelet-filled);
+  color: var(--mantine-color-white);
+  border-color: var(--mantine-color-tekhelet-filled);
+  border-style: solid;
+}
+
+/* Lit key, point not wanted: drop the chip back to the page background so it
+   stays distinguishable from the highlight it is sitting on. */
+.kbd-active .kbd-niqqud:not(.kbd-point-active) {
+  background: var(--mantine-color-body);
+}
+
+/* Rule table of contents.
+
+   Two independent things are shown: what state a rule is in (done, in progress,
+   locked) and which one you are currently practising. State is the mark on the
+   left; the one you are on gets the filled background. They come apart whenever
+   you step back to revise something already finished. */
+.toc-row {
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--mantine-radius-sm);
+  border-inline-start: 2px solid transparent;
+}
+.toc-row:hover:not(.toc-locked) { background: var(--mantine-color-default-hover); }
+.toc-viewing {
+  background: var(--mantine-color-tekhelet-light);
+  border-inline-start-color: var(--mantine-color-tekhelet-6);
+}
+.toc-viewing:hover { background: var(--mantine-color-tekhelet-light-hover); }
+.toc-locked { cursor: default; opacity: 0.45; }
+.toc-mark {
+  width: 14px;
+  flex: 0 0 14px;
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.toc-mark-done { color: var(--mantine-color-teal-6); }
+.toc-mark-active { color: var(--mantine-color-tekhelet-6); }
+.toc-mark-locked { color: var(--mantine-color-dimmed); }
+
+/* Streak pips */
+.pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid var(--mantine-color-default-border);
+}
+.pip-on { background: var(--mantine-color-tekhelet-6); border-color: var(--mantine-color-tekhelet-6); }
+
+/* Glossed jargon */
+.glossed {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
+
+/* Plural drill: reserved heights, so nothing above the keyboard moves.
+   The rule statement runs one to three lines and the card's lower half swaps
+   buttons for the reveal; both would otherwise shift the keyboard mid-answer. */
+/* No reserved height. The rule statement only changes when you deliberately
+   pick a rule from the syllabus, and reserving for the tallest of them cost
+   45px of page on seven of the nine — height that pushed the keyboard off a
+   laptop screen to prevent a shift the reader asked for. What must not move is
+   the keyboard while you answer, and that is the card footer's job below. */
+.drill-footer {
+  width: 100%;
+  /* Reserved so answering doesn't move the keyboard. Sized from the measured
+     distribution of every reveal in the bank — 86px×82, 109px×32, 126px×3,
+     143px×3 — not from the single worst case. Covering that worst case needed
+     146px and left a 110px void under the buttons on every screen, which is
+     page height spent on all 120 prompts to spare a shift on three. At 112px
+     114 of 120 never move, and the remaining six nudge the keyboard by 14-31px
+     at the moment attention is on the verdict rather than the keys. */
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+/* The syllabus column, dressed as an aside.
+
+   A dividing rule rather than a card border, so it reads as chrome beside the
+   content instead of another panel inside it. The column stretches to the row
+   height, so the rule runs the full page; the contents pin below the header and
+   scroll on their own only if they ever outgrow the viewport.
+
+   Verified before relying on it: nothing in Mantine's AppShell, Container or
+   Grid sets overflow, transform or contain on our ancestors, any of which would
+   make position:sticky fail silently. */
+.aside-col {
+  border-inline-start: 1px solid var(--mantine-color-default-border);
+}
+.toc-sticky {
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 92px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Last-resort guard: the key rows never wrap, so if a column ever gets narrower
+   than the breakpoints below expect, scroll rather than break the layout. */
+.kbd-scroll { max-width: 100%; overflow-x: auto; }
+
+/* The keyboard shares the content column now, which is ~620px at the widest and
+   ~470px just above the stacking breakpoint. Shrink the keys through that band
+   so 13 of them plus gaps always fit. */
+@media (min-width: 48em) and (max-width: 64em) {
+  .kbd-key { width: 31px; height: 40px; }
+  .kbd-he { font-size: 0.88rem; }
+  .kbd-cap { font-size: 0.5rem; }
+  .kbd-niqqud { font-size: 0.6rem; padding: 0 2px; }
+}
+
+@media (max-width: 48em) {
+  .aside-col { border-inline-start: 0; }
+  .toc-sticky { position: static; max-height: none; overflow: visible; }
+  .rule-panel { min-height: 0; }
+  .drill-footer { min-height: 0; }
+}
+
+/* The cluster a forgiven answer missed — bold enough to find at a glance in a
+   pointed form, in the accent colour rather than the error red, because the
+   answer was accepted. */
+.slip-mark {
+  font-weight: 700;
+  color: var(--mantine-color-tekhelet-filled);
+}

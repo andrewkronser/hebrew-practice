@@ -8,6 +8,10 @@ import StubPage from "./shared/StubPage.jsx";
    the router all read this array, so a new page can't appear in the menu while
    404ing, or route correctly while being invisible.
 
+   `width` is the content container for that section. Most pages are a single
+   column of prose and prompts and read best narrow; one with a syllabus beside
+   the drill needs more room. Omit it for the default.
+
    To add a section: write the page, import it, add a line. */
 
 const stub = (title) => () => <StubPage title={title} />;
@@ -17,5 +21,5 @@ export const SECTIONS = [
   { path: "/vocabulary", label: "Vocabulary", Component: VocabularyPage },
   { path: "/typing", label: "Learn to Type", Component: TypingPage },
   { path: "/roots", label: "Roots", Component: stub("Roots") },
-  { path: "/gender-and-number", label: "Gender and Number", Component: GenderNumberPage },
+  { path: "/gender-and-number", label: "Gender and Number", Component: GenderNumberPage, width: 980 },
 ];

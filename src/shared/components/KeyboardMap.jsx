@@ -1,37 +1,55 @@
 import { Box, Group, Kbd, Stack, Text } from "@mantine/core";
-import { ROWS, LAYOUT_NAME, NIQQUD, hebrewToKey, niqqudKey } from "../hebrewKeyboard.js";
+import {
+  ROWS, LAYOUT_NAME, NIQQUD, hebrewToKey, niqqudKey, carrierFor, composedLetter,
+} from "../hebrewKeyboard.js";
 
-/* Every letter and point, for callers that have no progression of their own. */
+/* Reference layout, shared by any module that involves typing Hebrew.
+
+   All three props are optional:
+
+   `target`        the string being typed; its keys are highlighted. Leave it
+                   out where the answer is what's being tested — in the plural
+                   drill, lighting up the keys would hand over the vowels.
+   `unlockedChars` dims letters not yet learned. Omit it and everything shows,
+                   which is what a module without its own progression wants.
+   `onType`        makes the keys clickable, each sending its character to the
+                   caller. A key can carry both a letter and a point, so the
+                   cell is a container with two buttons rather than one button
+                   with something nested inside it. */
+
+const ROW_OFFSET = ["0rem", "0rem", "0.6rem", "1.4rem"];
+
 const ALL_CHARS = new Set([
   ...ROWS.flat().map((k) => k.he),
   ...NIQQUD.map((n) => n.he),
 ]);
 
-/* Reference layout, shared by any module that involves typing Hebrew.
+const isHebrewLetter = (ch) => /[א-ת]/.test(ch);
 
-   `target` is optional: pass the string currently being typed to highlight the
-   keys it needs, or leave it out for a plain reference chart. `unlockedChars`
-   is likewise optional — omit it and every letter is shown as available, which
-   is what a module without its own progression wants.
+function pointTitle(point, key, he, os) {
+  const cap = key.toUpperCase();
+  if (!point) return `${cap} → ${he}`;
+  const whole = composedLetter(point.he, os);
+  const mod = os === "mac" ? "\u2325" : "AltGr+";
+  return whole
+    ? `${cap} → ${he}   ·   ${mod}${cap} → ${whole + point.he} (${point.name}, whole letter)`
+    : `${cap} → ${he}   ·   ${mod}${cap} → ${point.name}`;
+}
 
-   Letters you haven't unlocked are dimmed, the key you need next is
-   highlighted, and that's the whole feature — no finger animation.
-
-   Points are drawn on the keys they actually live on rather than in a separate
-   strip, which is why the number row is here: on macOS that's where most of
-   them sit. A point shown from the published chart rather than from a keystroke
-   we've watched is marked, because those charts have been wrong before. */
-
-const ROW_OFFSET = ["0rem", "0rem", "0.6rem", "1.4rem"];
-const CARRIER = "ב"; // ב, so a bare point has something to sit on
-
-export function KeyboardMap({ unlockedChars, target, os = "mac", learned = {} }) {
-  /* No progression supplied: treat the whole keyboard as available. */
+export function KeyboardMap({ unlockedChars, target, os = "mac", learned = {}, onType }) {
   const known = unlockedChars ?? ALL_CHARS;
-  const wantedKeys = new Set([...(target ?? "")].map((ch) => hebrewToKey.get(ch)).filter(Boolean));
   const wantedPoints = new Set([...(target ?? "")].filter((ch) => NIQQUD.some((n) => n.he === ch)));
 
-  /* cap -> the point that lives there, for points already unlocked. */
+  /* Where one key emits a letter and its point together, the letter is not a
+     separate press — highlighting it as well would read as "type ש, then שׁ". */
+  const composed = new Set([...wantedPoints].map((p) => composedLetter(p, os)).filter(Boolean));
+  const wantedKeys = new Set(
+    [...(target ?? "")]
+      .filter((ch) => !composed.has(ch))
+      .map((ch) => hebrewToKey.get(ch))
+      .filter(Boolean)
+  );
+
   const pointsByCap = new Map();
   for (const n of NIQQUD) {
     if (!known.has(n.he)) continue;
@@ -39,6 +57,9 @@ export function KeyboardMap({ unlockedChars, target, os = "mac", learned = {} })
     if (k?.cap) pointsByCap.set(k.cap, { ...n, ...k });
   }
   const anyGuessed = [...pointsByCap.values()].some((p) => !p.observed);
+
+  /* Keeping focus in the input means the caret stays where the typist left it. */
+  const hold = (e) => e.preventDefault();
 
   return (
     <Stack gap="sm">
@@ -49,40 +70,65 @@ export function KeyboardMap({ unlockedChars, target, os = "mac", learned = {} })
             · points need {os === "mac" ? <Kbd>⌥</Kbd> : <Kbd>AltGr</Kbd>}
           </Text>
         )}
+        {onType && <Text size="xs" c="dimmed">· click a key to type it</Text>}
       </Group>
 
       <Stack gap={4}>
         {ROWS.map((row, i) => (
           <Group key={i} gap={4} wrap="nowrap" style={{ paddingInlineStart: ROW_OFFSET[i] }}>
             {row.map(({ key, he }) => {
-              const isLetter = /[א-ת]/.test(he);
-              const unlocked = isLetter && known.has(he);
+              const letter = isHebrewLetter(he);
+              const unlocked = letter && known.has(he);
               const point = pointsByCap.get(key);
               const activeKey = wantedKeys.has(key);
               const activePoint = point && wantedPoints.has(point.he);
-              const idle = !isLetter && !point;
+              const idle = !letter && !point;
+
+              const typeable = Boolean(onType) && unlocked;
+              const pointTypeable = Boolean(onType) && Boolean(point);
+
               return (
                 <Box
                   key={key}
                   className={[
                     "kbd-key",
                     idle ? "kbd-punct" : "",
-                    isLetter && !unlocked ? "kbd-locked" : "",
-                    activeKey || activePoint ? "kbd-active" : "",
+                    letter && !unlocked ? "kbd-locked" : "",
+                    activeKey ? "kbd-active" : "",
+                    activePoint ? "kbd-point-wanted" : "",
+                    typeable ? "kbd-typeable" : "",
                   ].filter(Boolean).join(" ")}
-                  title={point ? `${point.shift ? "Shift+" : ""}${key.toUpperCase()} → ${point.name}` : `${key.toUpperCase()} → ${he}`}
+                  title={pointTitle(point, key, he, os)}
                 >
                   {point && (
                     <Box
-                      component="span"
-                      className={`hebrew kbd-niqqud${point.observed ? " kbd-seen" : ""}`}
-                      title={point.name}
+                      component={pointTypeable ? "button" : "span"}
+                      type={pointTypeable ? "button" : undefined}
+                      onMouseDown={pointTypeable ? hold : undefined}
+                      onClick={pointTypeable ? () => onType(point.he) : undefined}
+                      aria-label={pointTypeable ? `Type ${point.name}` : undefined}
+                      className={[
+                        "hebrew kbd-niqqud",
+                        point.observed ? "kbd-seen" : "",
+                        pointTypeable ? "kbd-hit" : "",
+                        activePoint ? "kbd-point-active" : "",
+                      ].filter(Boolean).join(" ")}
                     >
-                      {point.shift ? "⇧" : ""}{CARRIER + point.he}
+                      {point.shift ? "⇧" : ""}{carrierFor(point.he) + point.he}
                     </Box>
                   )}
-                  <Box component="span" className="hebrew kbd-he">{he}</Box>
-                  <Box component="span" className="kbd-cap">{key}</Box>
+
+                  <Box
+                    component={typeable ? "button" : "span"}
+                    type={typeable ? "button" : undefined}
+                    onMouseDown={typeable ? hold : undefined}
+                    onClick={typeable ? () => onType(he) : undefined}
+                    aria-label={typeable ? `Type ${he}` : undefined}
+                    className={`kbd-face${typeable ? " kbd-hit" : ""}`}
+                  >
+                    <Box component="span" className="hebrew kbd-he">{he}</Box>
+                    <Box component="span" className="kbd-cap">{key}</Box>
+                  </Box>
                 </Box>
               );
             })}

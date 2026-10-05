@@ -8,8 +8,11 @@ import {
 import { createProgression, scoreAnswer as sharedScore } from "./src/shared/progression.js";
 import { FORMS, CELLS, SEED_SIZE, isCorrectCell } from "./src/features/gender-number/data.js";
 import { pickForm, correctCells, engine, PACING } from "./src/features/gender-number/drill.js";
+import { RULES, ALL_PROMPTS, GLOSSARY, ERRORS, REDUCTION_PREAMBLE } from "./src/features/gender-number/rules.js";
+import { canonical } from "./src/features/typing/typing.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
-import { NIQQUD, LETTER_KEYS } from "./src/shared/hebrewKeyboard.js";
+import { NIQQUD, LETTER_KEYS, carrierFor, composedLetter } from "./src/shared/hebrewKeyboard.js";
+import { forgive, forgivenLabel, markedClusters } from "./src/features/gender-number/forgive.js";
 import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "./src/features/typing/typing.js";
 
 /* Letters, the common points, shin/sin dots, meteg, maqaf, space. Deliberately
@@ -306,6 +309,127 @@ for (const acc of [0.5, 0.65, 0.8, 0.95]) {
   const done = p.unlocked >= FORMS.length;
   console.log(`   ${acc}: ${done ? n + " answers" : "stalled at " + p.unlocked}`);
   check(`accuracy ${acc} reaches every form`, done, true);
+}
+
+console.log("── plural-formation rules ──");
+check("nine rules", RULES.length, 9);
+check("every prompt has a unique id",
+  new Set(ALL_PROMPTS.map((p) => p.id)).size, ALL_PROMPTS.length);
+check("every prompt has an answer and transliteration",
+  ALL_PROMPTS.filter((p) => !p.answer || !p.answerTr).length, 0);
+/* An "error form" that is actually right would teach the opposite of the rule. */
+const selfDefeating = ALL_PROMPTS.flatMap((p) =>
+  p.errors.filter((e) => canonical(e.form) === canonical(p.answer)).map(() => p.id));
+check("no error form equals its own answer", selfDefeating.join(",") || "none", "none");
+check("every error cites a known diagnosis",
+  ALL_PROMPTS.flatMap((p) => p.errors).filter((e) => !ERRORS[e.why]).length, 0);
+check("every rule has at least two words",
+  RULES.filter((r) => r.words.length < 2).length, 0);
+check("every rule has a streak target",
+  RULES.filter((r) => !(r.streak > 0)).length, 0);
+/* Hebrew in this file has to render, same guard as the other word data. */
+const ruleHebrew = ALL_PROMPTS.flatMap((p) => [
+  { id: p.id, he: p.he }, { id: p.id, he: p.answer },
+  ...p.errors.map((e) => ({ id: p.id, he: e.form })),
+]);
+check("plural-rule Hebrew uses safe codepoints", unsafeIn(ruleHebrew).join(",") || "clean", "clean");
+/* Every {braced} term in a statement, preamble or note must be defined. */
+const braced = (t) => [...String(t).matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
+const referenced = new Set([
+  ...RULES.flatMap((r) => braced(r.statement)),
+  ...REDUCTION_PREAMBLE.flatMap(braced),
+  ...ALL_PROMPTS.flatMap((p) => braced(p.note ?? "")),
+]);
+const undefinedTerms = [...referenced].filter((t) => !GLOSSARY[t]);
+console.log(`   ${referenced.size} glossary terms referenced across rules and notes`);
+check("every glossed term has a definition", undefinedTerms.join(",") || "none", "none");
+
+
+console.log("\n── niqqud carriers ──");
+/* A bare point needs something to sit on, but the shin and sin dots only ever
+   occur on ש; on any other letter they are not a form the reader has met. */
+{
+  const SHIN = "\u05E9", BET = "\u05D1";
+  check("shin dot carries shin", carrierFor("\u05C1"), SHIN);
+  check("sin dot carries shin", carrierFor("\u05C2"), SHIN);
+  const others = NIQQUD.filter((n) => !["\u05C1", "\u05C2"].includes(n.he));
+  check("every other point carries vet", others.every((n) => carrierFor(n.he) === BET), true);
+  check("an unknown character falls back", carrierFor("x"), BET);
+  /* macOS types the whole letter from the dot's key; Windows does not. */
+  check("shin dot composes on mac", composedLetter("\u05C1", "mac"), SHIN);
+  check("sin dot composes on mac", composedLetter("\u05C2", "mac"), SHIN);
+  check("not on windows", composedLetter("\u05C1", "win"), null);
+  check("plain vowels never compose",
+    NIQQUD.every((n) => !["\u05C1","\u05C2"].includes(n.he) ? composedLetter(n.he, "mac") === null : true), true);
+}
+
+
+console.log("\n── forgiven typos ──");
+/* The drill is about vowels. A dropped dagesh or a final/medial mix-up is a
+   keyboard slip, so it earns the point — but an added dagesh asserts a
+   different consonant and must not. */
+{
+  const D = "\u05BC";
+  const LETTER = /[\u05D0-\u05EA]/;
+  const FINALISE = { "\u05DB":"\u05DA", "\u05DE":"\u05DD", "\u05E0":"\u05DF", "\u05E4":"\u05E3", "\u05E6":"\u05E5" };
+  const MEDIALISE = Object.fromEntries(Object.entries(FINALISE).map(([a, b]) => [b, a]));
+
+  check("an exact answer is exact", forgive("\u05E1\u05D5\u05E1", "\u05E1\u05D5\u05E1")?.exact, true);
+  check("a different word is rejected", forgive(ALL_PROMPTS[0].answer, ALL_PROMPTS[7].answer), null);
+
+  /* Every form in the bank that carries a dagesh, with the dagesh dropped. */
+  const dagesh = ALL_PROMPTS.filter((p) => p.answer.includes(D));
+  check("the bank has forms with a dagesh", dagesh.length > 0, true);
+  check("dropping any dagesh is forgiven",
+    dagesh.every((p) => forgive(p.answer.replaceAll(D, ""), p.answer)?.forgiven), true);
+  check("and is named as such",
+    dagesh.every((p) => forgivenLabel(forgive(p.answer.replaceAll(D, ""), p.answer).kinds)
+      .includes("missing dagesh")), true);
+
+  /* Adding one is a different consonant, not a slip. */
+  const noDagesh = ALL_PROMPTS.filter((p) => !p.answer.includes(D));
+  const withAdded = (w) => { const out = []; let done = false;
+    for (const ch of w) { out.push(ch); if (!done && LETTER.test(ch)) { out.push(D); done = true; } }
+    return out.join(""); };
+  check("adding a dagesh is NOT forgiven",
+    noDagesh.every((p) => forgive(withAdded(p.answer), p.answer) === null), true);
+
+  /* Final where medial belongs, and the reverse, anywhere in the word. */
+  const swapAt = (w, map) => { const ls = [...w];
+    for (let i = 0; i < ls.length; i++) if (map[ls[i]]) { ls[i] = map[ls[i]]; return ls.join(""); }
+    return null; };
+  const medialised = ALL_PROMPTS.map((p) => [swapAt(p.answer, MEDIALISE), p.answer]).filter(([a]) => a);
+  const finalised = ALL_PROMPTS.map((p) => [swapAt(p.answer, FINALISE), p.answer]).filter(([a]) => a);
+  check("the bank exercises both letter shapes", medialised.length > 0 && finalised.length > 0, true);
+  check("a medial where the final belongs is forgiven",
+    medialised.every(([a, w]) => forgive(a, w)?.forgiven), true);
+  check("a final where the medial belongs is forgiven",
+    finalised.every(([a, w]) => forgive(a, w)?.forgiven), true);
+  check("each names its own direction",
+    finalised.every(([a, w]) => forgivenLabel(forgive(a, w).kinds).includes("final form where the medial")), true);
+
+  /* A wrong vowel is the thing being drilled and is never forgiven. */
+  const vowelSwapped = ALL_PROMPTS
+    .map((p) => [p.answer.replace("\u05B8", "\u05B6"), p.answer])
+    .filter(([a, w]) => a !== w);
+  check("the bank has qamats forms to perturb", vowelSwapped.length > 0, true);
+  check("a wrong vowel is never forgiven",
+    vowelSwapped.every(([a, w]) => forgive(a, w) === null), true);
+
+  /* No documented error form may be forgiven — they are the real mistakes. */
+  const everyError = ALL_PROMPTS.flatMap((p) => p.errors.map((e) => [e.form, p.answer]));
+  check("the bank documents error forms", everyError.length > 0, true);
+  check("no documented error is forgiven",
+    everyError.every(([bad, want]) => forgive(bad, want) === null), true);
+
+  /* The highlight points at a real cluster of the expected form. */
+  const one = dagesh[0];
+  const r = forgive(one.answer.replaceAll(D, ""), one.answer);
+  const marked = markedClusters(one.answer, r.at);
+  check("marked clusters rebuild the answer", marked.map((c) => c.text).join(""), one.answer.normalize("NFD"));
+  check("exactly the missed clusters are flagged", marked.filter((c) => c.flagged).length, r.at.length);
+  check("every flagged cluster carries the dagesh",
+    marked.filter((c) => c.flagged).every((c) => c.text.includes(D)), true);
 }
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);

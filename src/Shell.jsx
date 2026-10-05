@@ -61,7 +61,7 @@ export default function Shell() {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <Container size={660} py="md">
+        <Container size={SECTIONS.find((s) => s.path === pathname)?.width ?? 660} py="md">
           <Outlet />
         </Container>
       </AppShell.Main>

@@ -1,6 +1,7 @@
 /* Drives the Learn to Type page in the built bundle. */
 import { JSDOM, VirtualConsole } from "jsdom";
 import fs from "node:fs";
+import { NIQQUD } from "./src/shared/hebrewKeyboard.js";
 
 const errs = [];
 const vc = new VirtualConsole();
@@ -183,6 +184,63 @@ check("typing slice saved", Boolean(slice), true);
 check("unlocked persisted", slice?.progress?.unlocked > 1, true);
 check("platform persisted", ["mac","win"].includes(slice?.os), true);
 check("vocabulary slice independent", w.localStorage.getItem("hebrew-practice:vocabulary"), null);
+
+console.log("── the shin and sin dots ──");
+/* The awkward pair: the dots only ever sit on ש, and on macOS their key types
+   the whole letter. Unlocking an item shows it as an intro card, so stepping
+   the unlock control to each dot puts the cluster on screen without drilling
+   through everything in between. */
+const SHIN_DOT = "\u05C1", SIN_DOT = "\u05C2", SHIN = "\u05E9", BET = "\u05D1";
+const chips = () => [...doc.querySelectorAll(".kbd-niqqud")];
+const chipFor = (dot) => chips().find((c) => c.textContent.includes(dot));
+const glyph = () => txt(".glyph") ?? txt(".glyph-word") ?? "";
+const unlockBtn = () => [...doc.querySelectorAll("button")].find((b) => b.textContent.trim() === "Unlock the next one");
+
+const stepTo = async (dot) => {
+  for (let i = 0; i < 40; i++) {
+    if (glyph().includes(dot)) return true;
+    const u = unlockBtn();
+    if (!u) return false;
+    click(u);
+    await tick(60);
+  }
+  return glyph().includes(dot);
+};
+
+const litFaces = () => [...doc.querySelectorAll(".kbd-active")].map((k) => k.textContent.trim());
+const os = () => JSON.parse(w.localStorage.getItem("hebrew-practice:typing") || "{}").os;
+
+for (const [name, dot] of [["shin dot", SHIN_DOT], ["sin dot", SIN_DOT]]) {
+  const reached = await stepTo(dot);
+  check(`${name}: cluster on screen`, reached, true);
+  if (!reached) continue;
+
+  const chip = chipFor(dot);
+  check(`${name}: chip on the map`, Boolean(chip), true);
+  /* The bug: every chip hung its point on a ב, so these read as a vet with a
+     dot — a form that does not occur. */
+  check(`${name}: sits on shin`, chip?.textContent.includes(SHIN), true);
+  check(`${name}: not on vet`, chip?.textContent.includes(BET), false);
+
+  /* Previously the chip's resting fill matched .kbd-active's background, so a
+     lit key swallowed it and the dot being drilled was invisible. */
+  check(`${name}: its own chip is highlighted`, chip?.classList.contains("kbd-point-active"), true);
+  check(`${name}: its key is ringed`, Boolean(chip?.closest(".kbd-point-wanted")), true);
+  /* A cluster may carry a vowel as well as the dot (שָׁ needs qamats too), so
+     the lit chips should be exactly the points the prompt contains. */
+  const wantedPoints = [...new Set([...glyph()].filter((ch) => NIQQUD.some((n) => n.he === ch)))];
+  check(`${name}: every point in the prompt is lit`,
+        doc.querySelectorAll(".kbd-niqqud.kbd-point-active").length, wantedPoints.length);
+
+  /* On macOS that one key types ש and the dot together, so ש is not a second
+     press and must not be advertised as one. */
+  const shinLit = litFaces().some((t) => t.includes(SHIN));
+  check(`${name}: shin ${os() === "mac" ? "not " : ""}lit as a separate press`,
+        shinLit, os() !== "mac");
+}
+
+/* Ordinary points keep the neutral carrier. */
+check("a plain vowel still uses vet", chipFor("\u05B7")?.textContent.includes(BET), true);
 
 console.log("── other pages still work ──");
 click(link("Vocabulary"));
