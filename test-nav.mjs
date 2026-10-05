@@ -91,15 +91,15 @@ click(navLink("Roots"));
 await tick();
 check("Roots heading", h1(), "Roots");
 check("Roots hash", w.location.hash, "#/roots");
-check("stub text", rendered().includes("Not built yet."), true);
-check("drill gone from DOM", answerInput(), null);
+check("roots drill renders", doc.querySelectorAll(".root-cell").length, 3);
+check("transliteration drill gone from DOM", answerInput(), null);
 
 // The Enter handler is registered on document by useTrainer. If it leaked, it
 // would still be dealing cards on a page that has no cards.
 const errsBefore = errs.length;
 doc.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
 await tick();
-check("Enter on a stub page is inert", errs.length, errsBefore);
+check("Enter on another section is inert", errs.length, errsBefore);
 check("still on Roots", h1(), "Roots");
 
 click(navLink("Gender and Number"));

@@ -13,6 +13,11 @@ import { canonical } from "./src/features/typing/typing.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/transliteration/data.js";
 import { NIQQUD, LETTER_KEYS, carrierFor, composedLetter } from "./src/shared/hebrewKeyboard.js";
 import { forgive, forgivenLabel, markedClusters } from "./src/features/gender-number/forgive.js";
+import {
+  LESSONS, ALL_WORDS, wordsForLesson, markedWord, sameRoot, diagnose, syllabus,
+  judgeRoot, dotInWord, dotName, affixSpans, annotatedWord, bareRoot,
+  EXCEPTIONS, PRACTICE_WORDS, CLASSES,
+} from "./src/features/roots/lessons.js";
 import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "./src/features/typing/typing.js";
 
 /* Letters, the common points, shin/sin dots, meteg, maqaf, space. Deliberately
@@ -430,6 +435,278 @@ console.log("\n── forgiven typos ──");
   check("exactly the missed clusters are flagged", marked.filter((c) => c.flagged).length, r.at.length);
   check("every flagged cluster carries the dagesh",
     marked.filter((c) => c.flagged).every((c) => c.text.includes(D)), true);
+}
+
+
+console.log("\n── roots: the word bank ──");
+{
+  const LETTER = /^[א-ת]+$/;
+  const FINALS = "ךםןףץ";
+  const MEDIALS = "כמנפצ";
+
+  check("eight lessons", LESSONS.length, 8);
+  check("every lesson is stocked", LESSONS.every((l) => wordsForLesson(l.id).length >= 3), true);
+  check("seventy words", ALL_WORDS.length, 70);
+  check("ids are unique", new Set(ALL_WORDS.map((w) => w.id)).size, ALL_WORDS.length);
+  check("every lesson cites Seow", LESSONS.every((l) => Boolean(l.seow)), true);
+  check("every lesson has a streak target", LESSONS.every((l) => l.streak >= 3), true);
+
+  /* Roots are three unpointed consonants — no vowels, no marks. */
+  check("every root is three letters", ALL_WORDS.every((w) => [...w.root].length === 3), true);
+  check("roots carry no pointing", ALL_WORDS.every((w) => LETTER.test(w.root)), true);
+  check("every answer is three letters", ALL_WORDS.every((w) => w.letters.length === 3), true);
+  /* Hebrew writes the closing letter in its final shape; the drill accepts
+     either, but the answer it shows should be spelled correctly. */
+  check("no final form sits mid-root",
+    ALL_WORDS.every((w) => w.letters.slice(0, 2).every((c) => !FINALS.includes(c))), true);
+  check("a closing letter takes its final shape",
+    ALL_WORDS.every((w) => !MEDIALS.includes(w.letters[2])), true);
+
+  /* The nouns are pointed and must survive canonicalisation unchanged. */
+  check("every noun is pointed", ALL_WORDS.every((w) => w.he !== w.he.replace(/[֑-ׇ]/g, "")), true);
+  check("no cantillation or unsafe marks",
+    ALL_WORDS.every((w) => !/[֑-ֽ֯-׀׃-ׇ]/.test(w.he)), true);
+
+  console.log("\n── roots: fingerprints match their lesson ──");
+  const marksOf = (w) => markedWord(w).filter((c) => c.flagged);
+  const byLesson = (id) => wordsForLesson(id);
+
+  check("strong roots point at nothing", byLesson("strong").every((w) => w.marks.length === 0), true);
+  check("the lost-radical lesson points at nothing", byLesson("ilost").every((w) => w.marks.length === 0), true);
+  check("prefixes point at the first cluster",
+    byLesson("prefix").filter((w) => w.marks.length).every((w) => w.marks[0] === 0), true);
+  check("the I-Nûn clue is always a dagesh",
+    byLesson("nun").every((w) => marksOf(w).every((c) => c.text.includes("ּ"))), true);
+  check("the guttural clue is a guttural or rêš",
+    byLesson("gutt").every((w) => marksOf(w).length > 0 &&
+      marksOf(w).every((c) => /[אהחער]/.test(c.text))), true);
+  check("the I-Wāw clue is the ô or ê carrying the lost ו",
+    byLesson("iwaw").every((w) => marksOf(w).length === 1 &&
+      /[וי]/.test(marksOf(w)[0].text)), true);
+  check("II-weak points at a ו or י, or at nothing when none is written",
+    byLesson("iiwy").every((w) => w.marks.length === 0 ||
+      (w.marks.length === 1 && /[וי]/.test(marksOf(w)[0].text))), true);
+  /* The clue is the whole tail past the last written radical — the ־וּת of
+     זְנוּת, not just its ת — falling back to the final ה when the third radical
+     is written, as in שָׂדֶה. Either way it runs to the end of the word. */
+  check("III-Hē points at the end",
+    byLesson("iiihe").every((w) => w.marks.length >= 1 &&
+      w.marks[w.marks.length - 1] === markedWord(w).length - 1), true);
+  check("and its clue is one unbroken run",
+    byLesson("iiihe").every((w) => w.marks.every((n, i) => i === 0 || n === w.marks[i - 1] + 1)), true);
+  /* The two-consonant nouns are exactly the ones with nothing to point at. */
+  check("only the two-consonant nouns lack a clue",
+    byLesson("iiwy").filter((w) => w.marks.length === 0).length, 4);
+  check("marks stay inside the word",
+    ALL_WORDS.every((w) => w.marks.every((i) => i >= 0 && i < markedWord(w).length)), true);
+
+  console.log("\n── roots: grading ──");
+  check("the right answer is accepted",
+    ALL_WORDS.every((w) => sameRoot(w.letters.join(""), w.root)), true);
+  check("a medial letter where the final belongs is accepted",
+    ALL_WORDS.every((w) => sameRoot(w.root.replace(/[ךםןףץ]$/,
+      (c) => "כמנפצ"["ךםןףץ".indexOf(c)]), w.root)), true);
+  check("a different root is rejected",
+    sameRoot(ALL_WORDS[0].root, ALL_WORDS[40].root), false);
+  check("a right answer draws no diagnosis",
+    ALL_WORDS.every((w) => diagnose(w.letters, w) === null), true);
+  /* The diagnoses that matter most, on words from the lessons that teach them. */
+  const say = (he, typed) => diagnose([...typed], ALL_WORDS.find((w) => w.he === he)) ?? "";
+  check("an assimilated nûn is named", say("מַתָּן", "מתן").includes("assimilated"), true);
+  check("a kept prefix is named", say("מִשְׁפָּט", "משפ").includes("prefix"), true);
+  check("writing ו for I-Yōd is named", say("מוֹשָׁב", "ושב").includes("I-Yōd"), true);
+  check("a dropped III-Hē is named", say("שָׁנָה", "שנא").includes("final ה"), true);
+  check("a radical that isn't on the page is named",
+    say("עֵדָה", "עדה").includes("missing from the front"), true);
+
+  console.log("\n── roots: the syllabus engine ──");
+  const ids = LESSONS.map((l) => l.id);
+  check("starts on the first lesson", syllabus.fresh().stepId, ids[0]);
+  check("frontier is the first unfinished", syllabus.frontierOf([ids[0], ids[1]]), ids[2]);
+  check("finished lessons read done", syllabus.stateOf(ids[0], [ids[0]]), "done");
+  check("the frontier reads active", syllabus.stateOf(ids[1], [ids[0]]), "active");
+  check("later lessons read locked", syllabus.stateOf(ids[4], [ids[0]]), "locked");
+  check("past the end is free", syllabus.frontierOf(ids), "free");
+  /* A run only accrues on the frontier, and completing moves it on. */
+  let p = syllabus.fresh();
+  const target = LESSONS[0].streak;
+  for (let i = 1; i < target; i++) {
+    p = syllabus.answer(p, true).progress;
+    check(`run reaches ${i}`, p.streak, i);
+  }
+  const last = syllabus.answer(p, true);
+  check("the final answer completes the lesson", last.completed, ids[0]);
+  check("and moves to the next", last.progress.stepId, ids[1]);
+  check("with the run reset", last.progress.streak, 0);
+  check("a miss resets the run", syllabus.answer({ ...p, streak: 3 }, false).progress.streak, 0);
+  /* Revising a finished lesson changes nothing at all. */
+  const revising = { stepId: ids[0], streak: 4, done: [ids[0], ids[1]] };
+  check("revising does not accrue", syllabus.answer(revising, true).progress, revising);
+  check("revising does not complete", syllabus.answer(revising, true).completed, null);
+  check("and is reported as revising", syllabus.isRevising(revising), true);
+  /* Stored progress is rebuilt defensively. */
+  check("unknown lesson ids are dropped",
+    syllabus.normalize({ stepId: "nope", streak: 2, done: ["gone", ids[0]] }).done, [ids[0]]);
+  check("a bad streak becomes zero", syllabus.normalize({ stepId: ids[0], streak: "x" }).streak, 0);
+}
+
+
+console.log("\n── roots: the ש dot ──");
+{
+  const SHIN = "ש", SHIN_DOT = "ׁ", SIN_DOT = "ׂ";
+  const dotted = ALL_WORDS.filter((w) => w.root.includes(SHIN));
+  check("the bank has roots with ש", dotted.length > 0, true);
+  /* Derived from the nouns rather than typed in twice, so the nouns must all
+     agree — a disagreement would mean a transcription error. */
+  const byRoot = new Map();
+  for (const w of dotted) {
+    const dot = dotInWord(w.he);
+    if (!byRoot.has(w.root)) byRoot.set(w.root, new Set());
+    byRoot.get(w.root).add(dot);
+  }
+  check("every ש root's dot is decidable from its nouns",
+    [...byRoot.values()].every((set) => set.size === 1 && !set.has(null)), true);
+  check("and every ש in an answer carries it",
+    dotted.every((w) => w.letters.some((c) => [...c].length > 1)), true);
+  check("no root has two ש to disagree about",
+    dotted.every((w) => [...w.root].filter((c) => c === SHIN).length === 1), true);
+  /* Both dots are actually exercised by the bank. */
+  const kinds = new Set(dotted.map((w) => dotInWord(w.he)));
+  check("the bank drills both שׁ and שׂ", kinds.has(SHIN_DOT) && kinds.has(SIN_DOT), true);
+
+  console.log("\n── roots: judging the dot ──");
+  check("the stored answer is exact", ALL_WORDS.every((w) => judgeRoot(w.letters, w)?.exact), true);
+  const bare = (w) => w.letters.map((c) => [...c][0]);
+  const flipped = (w) => w.letters.map((c) => [...c].length > 1
+    ? [...c][0] + ([...c][1] === SHIN_DOT ? SIN_DOT : SHIN_DOT) : c);
+  check("leaving the dot off is forgiven, not failed",
+    dotted.every((w) => judgeRoot(bare(w), w)?.forgiven), true);
+  check("and the forgiven answer names the dot",
+    dotted.every((w) => judgeRoot(bare(w), w).dots.every((d) => Boolean(dotName(d)))), true);
+  /* שׂ and שׁ are different consonants, so the other dot is not a slip. */
+  check("the wrong dot is rejected", dotted.every((w) => judgeRoot(flipped(w), w) === null), true);
+  check("a wrong consonant is still rejected",
+    judgeRoot(["ז", "ז", "ז"], ALL_WORDS[0]), null);
+  check("a letter shape is still forgiven",
+    ALL_WORDS.every((w) => Boolean(judgeRoot(
+      w.letters.map((c, i) => i === 2 ? c.replace(/[ךםןףץ]/,
+        (x) => "כמנפצ"["ךםןףץ".indexOf(x)]) : c), w))), true);
+  /* A dot never changes which consonants the diagnosis talks about. */
+  check("the dot does not disturb the diagnosis",
+    dotted.every((w) => diagnose(bare(w), w) === null), true);
+
+  console.log("\n── roots: affixes ──");
+  const PREFIX = new Set(["מ", "ת", "א"]); // מ ת א
+  const baseOf = (text) => [...text].find((c) => /[א-ת]/.test(c)) ?? "";
+  for (const w of ALL_WORDS) {
+    const { prefix, ending } = affixSpans(w);
+    const cs = markedWord(w);
+    if (prefix.some((i) => i < 0 || i >= cs.length) || ending.some((i) => i < 0 || i >= cs.length)) {
+      check(`spans stay inside ${w.he}`, false, true);
+    }
+  }
+  check("spans stay inside every word", true, true);
+  /* On the prefix lesson the clue and the affix are the same cluster, which is
+     correct — so the rule is not that they never coincide, but that a cluster
+     is only ever shown as one of the two. */
+  check("a cluster is shown as a clue or an affix, never both",
+    ALL_WORDS.every((w) => annotatedWord(w, { clue: true, affix: true })
+      .every((c) => c.kind === null || typeof c.kind === "string")), true);
+  check("the clue wins where they coincide",
+    annotatedWord(wordsForLesson("prefix")[0], { clue: true, affix: true })[0].kind, "clue");
+  /* With the clue off, the prefix must still show as an affix. */
+  check("the affix hint stands on its own",
+    annotatedWord(wordsForLesson("prefix")[0], { affix: true })[0].kind, "affix");
+  /* The ô of a I-Wāw noun is a radical's reflex, not something to peel off. */
+  check("a vowel letter carrying a radical is never called an affix",
+    wordsForLesson("iwaw").every((w) => {
+      const a = annotatedWord(w, { affix: true });
+      return (w.marks ?? []).every((i) => a[i].kind !== "affix");
+    }), true);
+  check("a prefix cluster is always מ, ת or א",
+    ALL_WORDS.every((w) => affixSpans(w).prefix.every((i) =>
+      PREFIX.has(baseOf(markedWord(w)[i].text)) || baseOf(markedWord(w)[i].text) === "")), true);
+  /* Lesson 2 is the prefix lesson, so each of its words has one — except the
+     one whose מ is a radical, which is the point of including it. */
+  const prefixLesson = wordsForLesson("prefix");
+  check("every prefix-lesson word shows a prefix, bar the trap",
+    prefixLesson.filter((w) => affixSpans(w).prefix.length === 0).length, 1);
+  check("every I-Wāw noun shows its prefix too",
+    wordsForLesson("iwaw").every((w) => affixSpans(w).prefix.length === 1), true);
+  check("and the trap is מְלָכִים",
+    prefixLesson.find((w) => affixSpans(w).prefix.length === 0).root, "מלך");
+  /* What is left over after peeling must be part of the root, in order. */
+  /* Peel the affixes and the clue, and what is left must be root letters in
+     order — the clue too, because it may be a vowel standing in for one. */
+  check("what remains is a subsequence of the root",
+    ALL_WORDS.every((w) => {
+      const { prefix, ending } = affixSpans(w);
+      const off = new Set([...prefix, ...ending, ...(w.marks ?? [])]);
+      const kept = markedWord(w)
+        .map((c, i) => (off.has(i) ? "" : baseOf(c.text)))
+        .filter(Boolean)
+        .map((c) => bareRoot(c));
+      /* A word may also carry an internal mater — the yod of צַדִּיק — which is
+         neither radical nor affix, so it is allowed to sit in between. */
+      const MATER = new Set(["\u05D5", "\u05D9", "\u05D0", "\u05D4"]);
+      /* A subsequence, not a run: a hidden radical — the נ of נתן, the ו of
+         ישב — leaves a gap in the middle of the root that nothing fills. */
+      const root = bareRoot(w.root);
+      let r = 0;
+      for (const c of kept) {
+        let k = r;
+        while (k < 3 && root[k] !== c) k++;
+        if (k < 3) { r = k + 1; continue; }
+        if (MATER.has(c)) continue;
+        return false;
+      }
+      return true;
+    }), true);
+
+  console.log("\n── roots: annotation ──");
+  const both = (w) => annotatedWord(w, { clue: true, affix: true });
+  check("annotation rebuilds the word",
+    ALL_WORDS.every((w) => both(w).map((c) => c.text).join("") === w.he.normalize("NFD")), true);
+  check("with nothing shown, nothing is tagged",
+    ALL_WORDS.every((w) => annotatedWord(w).every((c) => c.kind === null)), true);
+  check("each cluster gets at most one tag",
+    ALL_WORDS.every((w) => both(w).every((c) => c.kind === null || c.kind === "clue" || c.kind === "affix")), true);
+}
+
+
+console.log("\n── roots: the exceptions ──");
+{
+  /* Words no rule reaches. They are kept out of the eight lessons — there is
+     nothing to teach — and asked only in Practice, where the mix is the point. */
+  check("there are exceptions", EXCEPTIONS.length > 0, true);
+  check("they are not in any lesson",
+    EXCEPTIONS.every((w) => !LESSONS.some((l) => l.id === w.lesson)), true);
+  check("they are not in the lesson bank",
+    ALL_WORDS.some((w) => EXCEPTIONS.some((e) => e.he === w.he)), false);
+  check("but they are in the practice pool",
+    EXCEPTIONS.every((w) => PRACTICE_WORDS.includes(w)), true);
+  check("the practice pool is the lessons plus them",
+    PRACTICE_WORDS.length, ALL_WORDS.length + EXCEPTIONS.length);
+  check("each is flagged as memorised", EXCEPTIONS.every((w) => w.memorise === true), true);
+  /* Nothing on the page gives them away, so there is nothing to highlight. */
+  check("none carries a fingerprint", EXCEPTIONS.every((w) => w.marks.length === 0), true);
+  check("each says why it has to be known",
+    EXCEPTIONS.every((w) => typeof w.note === "string" && w.note.length > 20), true);
+  check("each still answers with three letters",
+    EXCEPTIONS.every((w) => w.letters.length === 3), true);
+  check("and grades like any other", EXCEPTIONS.every((w) => judgeRoot(w.letters, w)?.exact), true);
+  check("ids stay unique across the whole pool",
+    new Set(PRACTICE_WORDS.map((w) => w.id)).size, PRACTICE_WORDS.length);
+
+  console.log("\n── roots: the health classes ──");
+  check("nine classes: eight lessons and the exceptions", CLASSES.length, LESSONS.length + 1);
+  check("every class has words",
+    CLASSES.every((c) => PRACTICE_WORDS.filter((w) => w.lesson === c.id).length > 0), true);
+  check("the classes cover the pool exactly",
+    PRACTICE_WORDS.every((w) => CLASSES.some((c) => c.id === w.lesson)), true);
+  check("and nothing is counted twice",
+    CLASSES.reduce((t, c) => t + PRACTICE_WORDS.filter((w) => w.lesson === c.id).length, 0),
+    PRACTICE_WORDS.length);
 }
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);

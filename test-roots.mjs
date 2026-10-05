@@ -1,0 +1,347 @@
+/* Drives "Learn root rules" in the built bundle. */
+import { JSDOM, VirtualConsole } from "jsdom";
+import fs from "node:fs";
+import {
+  LESSONS, CLASSES, wordsForLesson, ALL_WORDS, PRACTICE_WORDS, affixSpans,
+  dotInWord, SHIN_DOT, SIN_DOT,
+} from "./src/features/roots/lessons.js";
+
+const errs = [];
+const vc = new VirtualConsole();
+vc.on("jsdomError", (e) => errs.push("jsdomError: " + (e.message || e)));
+vc.on("error", (...a) => errs.push("console.error: " + a.map(String).join(" ")));
+
+const boot = (seed) => {
+  const dom = new JSDOM(`<!doctype html><html><body><div id="root"></div></body></html>`, {
+    runScripts: "dangerously", pretendToBeVisual: true, virtualConsole: vc,
+    url: "http://localhost/hebrew-practice/",
+    beforeParse(win) {
+      win.matchMedia = (q) => ({
+        matches: false, media: q, onchange: null,
+        addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; },
+      });
+      win.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+      win.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} takeRecords() { return []; } };
+      win.requestAnimationFrame = (fn) => win.setTimeout(() => fn(Date.now()), 0);
+      if (seed) for (const [k, v] of Object.entries(seed)) win.localStorage.setItem(k, JSON.stringify(v));
+    },
+  });
+  const s = dom.window.document.createElement("script");
+  s.textContent = fs.readFileSync("dist-test/bundle.js", "utf8");
+  dom.window.document.body.appendChild(s);
+  return dom;
+};
+
+let dom = boot();
+let w = dom.window, doc = w.document;
+await new Promise((r) => setTimeout(r, 600));
+
+const rendered = () => doc.getElementById("root").textContent;
+const tick = (ms = 130) => new Promise((r) => setTimeout(r, ms));
+const txt = (sel) => doc.querySelector(sel)?.textContent?.trim() ?? null;
+const link = (l) => [...doc.querySelectorAll("a")].find((a) => a.textContent.trim() === l);
+const btn = (l) => [...doc.querySelectorAll("button")].find((b) => b.textContent.trim() === l);
+const click = (el) => el.dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true, view: w }));
+const cells = () => [...doc.querySelectorAll(".root-cell")];
+const tocRows = () => [...doc.querySelectorAll(".toc-row")];
+const tocRow = (text) => tocRows().find((r) => r.textContent.includes(text));
+const setVal = (el, v) => {
+  Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, "value").set.call(el, v);
+  el.dispatchEvent(new w.Event("input", { bubbles: true }));
+};
+const enter = (el) => el.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+const word = () => txt(".glyph-word");
+const meter = () => {
+  const m = rendered().match(/(\d+) of (\d+) in a row/);
+  return m ? { streak: Number(m[1]), target: Number(m[2]) } : null;
+};
+
+const results = [];
+const check = (name, got, want) => {
+  const ok = String(got) === String(want);
+  results.push(ok);
+  console.log(`${ok ? "pass" : "FAIL"}  ${name}${ok ? "" : `  (got ${JSON.stringify(got)}, want ${JSON.stringify(want)})`}`);
+};
+
+/* One cell per consonant — and a ש carries its dot with it, so the root can't
+   just be spread by code point or a dotted letter spills into a fourth cell. */
+const asCells = (root) => {
+  const out = [];
+  for (const ch of String(root).normalize("NFD")) {
+    if (/[א-ת]/.test(ch)) out.push(ch);
+    else if (out.length) out[out.length - 1] += ch;
+  }
+  return out;
+};
+
+/** Type a root into the three cells and submit. */
+const answerWith = async (root) => {
+  const cs = cells();
+  asCells(root).forEach((v, i) => setVal(cs[i], v));
+  await tick(40);
+  enter(cells()[2]);
+  await tick();
+};
+const rootFor = (he, lessonId) => wordsForLesson(lessonId).find((x) => x.he === he)?.root;
+
+console.log("── reaching the drill ──");
+click(link("Roots"));
+await tick();
+check("page heading", txt("h1"), "Roots");
+check("both modes offered", /Learn root rules/.test(rendered()) && /Practice roots/.test(rendered()), true);
+check("three cells", cells().length, 3);
+check("cells are labelled by position",
+  cells().map((c) => c.getAttribute("aria-label")).join(","),
+  "first radical,second radical,third radical");
+check("eight lessons in the syllabus", tocRows().length, LESSONS.length);
+check("starts on lesson one", rendered().includes("1. Strong roots"), true);
+check("the lesson cites Seow", rendered().includes("Seow III.1"), true);
+check("later lessons are locked", doc.querySelectorAll(".toc-locked").length, LESSONS.length - 1);
+
+console.log("\n── the keyboard carries letters and the two ש dots ──");
+/* Roots are unpointed apart from the ש dot, which BDB files on, so those two
+   points stay and every other one goes. */
+check("keyboard rendered", doc.querySelectorAll(".kbd-key").length > 0, true);
+check("exactly two niqqud chips", doc.querySelectorAll(".kbd-niqqud").length, 2);
+check("and they are the shin and sin dots",
+  [...doc.querySelectorAll(".kbd-niqqud")].map((n) => n.textContent.trim()).sort().join(""),
+  ["\u05E9" + SIN_DOT, "\u05E9" + SHIN_DOT].sort().join(""));
+check("no key is highlighted", doc.querySelectorAll(".kbd-active").length, 0);
+const letterKey = [...doc.querySelectorAll(".kbd-face.kbd-hit")][0];
+check("letter keys are clickable", Boolean(letterKey), true);
+click(letterKey);
+await tick(60);
+check("clicking a key fills a cell", cells().some((c) => c.value !== ""), true);
+cells().forEach((c) => setVal(c, ""));
+await tick(40);
+
+console.log("\n── answering ──");
+check("Check is disabled until all three are filled", btn("Check")?.disabled, true);
+let w1 = word();
+await answerWith(rootFor(w1, "strong"));
+check("a right answer reads Correct", rendered().includes("Correct"), true);
+check("the run advanced", meter()?.streak, 1);
+check("and the verdict survives the keystroke that made it", Boolean(btn("Next")), true);
+click(btn("Next"));
+await tick();
+
+/* A medial letter where the final belongs is a shape slip, not a wrong root.
+   Cycle until any root closing with a final form comes up, rather than waiting
+   on one particular word — that version passed only about four times in five. */
+const MEDIAL = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
+const closesFinal = (he) => {
+  const entry = wordsForLesson("strong").find((x) => x.he === he);
+  return entry && MEDIAL[entry.letters[2]] ? entry : null;
+};
+let shapeWord = null;
+for (let i = 0; i < 30 && !(shapeWord = closesFinal(word())); i++) {
+  click(btn("Show answer")); await tick(60); click(btn("Next")); await tick(60);
+}
+check("reached a root that closes with a final form", Boolean(shapeWord), true);
+{
+  const ls = [...shapeWord.letters];
+  ls[2] = MEDIAL[ls[2]];
+  await answerWith(ls.join(""));
+  check("a medial letter in final position is accepted", rendered().includes("Correct"), true);
+  click(btn("Next")); await tick();
+}
+
+console.log("\n── a wrong answer explains itself ──");
+const wrongWord = word();
+const right = rootFor(wrongWord, "strong");
+await answerWith("זזז");
+check("a wrong answer reads Not quite", rendered().includes("Not quite"), true);
+check("the root is shown", rendered().includes(right), true);
+check("the run resets", meter()?.streak, 0);
+click(btn("Next"));
+await tick();
+
+console.log("\n── finishing a lesson ──");
+let done = false;
+for (let i = 0; i < 12 && !done; i++) {
+  const r = rootFor(word(), "strong");
+  if (!r) break;
+  await answerWith(r);
+  if (/Strong roots — done/.test(rendered())) done = true;
+  if (btn("Next")) { click(btn("Next")); await tick(70); }
+}
+check("completing the lesson is announced", done, true);
+check("the next lesson is now in progress",
+  tocRows().find((r) => r.getAttribute("data-state") === "active")?.textContent.includes("Nouns with prefixes"), true);
+check("one fewer lesson is locked", doc.querySelectorAll(".toc-locked").length, LESSONS.length - 2);
+check("the run restarts", meter()?.streak, 0);
+
+console.log("\n── the fingerprint toggle ──");
+/* מְלָכִים is the one lesson-2 word with nothing to point at — its מ really is
+   a radical — so step past it before asserting that a clue appears. */
+const hasClue = () => Boolean(wordsForLesson("prefix").find((x) => x.he === word())?.marks.length);
+for (let i = 0; i < 20 && !hasClue(); i++) {
+  click(btn("Show answer")); await tick(60); click(btn("Next")); await tick(60);
+}
+check("on a word that has a clue", hasClue(), true);
+check("no highlight by default", doc.querySelectorAll(".glyph-word .slip-mark").length, 0);
+const toggle = [...doc.querySelectorAll("input[type=checkbox]")]
+  .find((i) => i.closest("label")?.textContent.includes("fingerprint"))
+  ?? doc.querySelector("input[type=checkbox]");
+check("the toggle is offered", Boolean(toggle), true);
+toggle.click();
+await tick();
+/* Lesson 2's clue is the prefix, so there is always something to point at. */
+check("turning it on highlights the clue", doc.querySelectorAll(".glyph-word .slip-mark").length > 0, true);
+check("the clue is the first cluster",
+  doc.querySelector(".glyph-word").firstElementChild?.classList.contains("slip-mark"), true);
+toggle.click();
+await tick();
+check("turning it off clears the highlight", doc.querySelectorAll(".glyph-word .slip-mark").length, 0);
+
+console.log("\n── the ש dot ──");
+/* BDB files שׂ and שׁ apart, so the dot is part of the answer: leaving it off
+   earns the point with a note, writing the other one does not. Take whichever
+   ש word comes up rather than waiting on a particular one. */
+const entryFor = (he) => wordsForLesson("prefix").find((x) => x.he === he);
+const hasDot = (he) => Boolean(entryFor(he)?.letters.some((c) => [...c].length > 1));
+const cycle = async () => {
+  if (btn("Show answer")) { click(btn("Show answer")); await tick(60); }
+  if (btn("Next")) { click(btn("Next")); await tick(60); }
+};
+for (let i = 0; i < 24 && !hasDot(word()); i++) await cycle();
+check("reached a root written with a ש", hasDot(word()), true);
+
+const dotWord = entryFor(word());
+await answerWith(dotWord.letters.map((c) => [...c][0]).join(""));
+check("a bare ש still earns the point", rendered().includes("Correct"), true);
+check("but the dot is named", /Counted as correct — but the ש is/.test(rendered()), true);
+check("and the pointed root is shown", rendered().includes(dotWord.letters.join("")), true);
+click(btn("Next")); await tick();
+
+for (let i = 0; i < 24 && !hasDot(word()); i++) await cycle();
+check("reached another", hasDot(word()), true);
+const other = entryFor(word());
+await answerWith(other.letters
+  .map((c) => ([...c].length > 1 ? [...c][0] + ([...c][1] === SHIN_DOT ? SIN_DOT : SHIN_DOT) : c))
+  .join(""));
+check("the other dot is a different consonant, so it is wrong",
+  rendered().includes("Not quite"), true);
+click(btn("Next")); await tick();
+
+/* A dot clicked on the keyboard lands on the ש already typed, not in the cell
+   the caret has moved on to. */
+setVal(cells()[0], "\u05E9");
+await tick(60);
+click([...doc.querySelectorAll(".kbd-niqqud")].find((n) => n.textContent.includes(SIN_DOT)));
+await tick(80);
+check("clicking a dot attaches it to the ש behind the caret",
+  cells()[0].value.normalize("NFD"), "\u05E9" + SIN_DOT);
+cells().forEach((c) => setVal(c, ""));
+await tick(40);
+
+console.log("\n── the affix toggle ──");
+const affixToggle = [...doc.querySelectorAll("input[type=checkbox]")]
+  .find((i) => i.closest("label")?.textContent.includes("affixes"));
+check("a second toggle is offered", Boolean(affixToggle), true);
+check("nothing is marked as an affix yet", doc.querySelectorAll(".glyph-word .affix-mark").length, 0);
+affixToggle.click();
+await tick();
+const spansNow = affixSpans(ALL_WORDS.find((x) => x.he === word()) ?? {});
+check("affixes are highlighted",
+  doc.querySelectorAll(".glyph-word .affix-mark").length,
+  (spansNow.prefix?.length ?? 0) + (spansNow.ending?.length ?? 0));
+check("in a different colour from the clue",
+  doc.querySelector(".glyph-word .affix-mark")?.classList.contains("slip-mark") ?? false, false);
+/* Both hints at once: a cluster takes one colour or the other, never both. */
+toggle.click();
+await tick();
+check("both hints can be on together",
+  doc.querySelectorAll(".glyph-word .slip-mark").length > 0 &&
+  doc.querySelectorAll(".glyph-word .affix-mark").length >= 0, true);
+check("no cluster carries both marks",
+  [...doc.querySelectorAll(".glyph-word .slip-mark")]
+    .every((n) => !n.classList.contains("affix-mark")), true);
+toggle.click(); affixToggle.click();
+await tick();
+check("both clear again",
+  doc.querySelectorAll(".glyph-word .slip-mark,.glyph-word .affix-mark").length, 0);
+
+console.log("\n── revising a finished lesson ──");
+const before = meter()?.streak ?? 0;
+click(tocRow("Strong roots"));
+await tick();
+check("can step back to a finished lesson", rendered().includes("1. Strong roots"), true);
+check("no meter while revising", meter(), null);
+check("and it says why", rendered().includes("Revising — nothing counts here"), true);
+await answerWith(rootFor(word(), "strong") ?? "זזז");
+click(btn("Next")); await tick();
+click(tocRow("Nouns with prefixes"));
+await tick();
+check("the run on the frontier is untouched", meter()?.streak, before);
+check("locked lessons cannot be opened", tocRow("III-Hē")?.disabled, true);
+
+console.log("\n── persistence ──");
+const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:root-rules") || "null");
+check("slice saved", Boolean(slice), true);
+check("the finished lesson is recorded", slice?.progress?.done?.includes("strong"), true);
+
+/* A real reload: a second document reading the same storage. */
+{
+  const seeded = {};
+  for (const k of Object.keys(w.localStorage)) seeded[k] = JSON.parse(w.localStorage.getItem(k));
+  const dom2 = boot(seeded);
+  const w2 = dom2.window, doc2 = w2.document;
+  await new Promise((r) => setTimeout(r, 600));
+  const rendered2 = () => doc2.getElementById("root").textContent;
+  const click2 = (el) => el.dispatchEvent(new w2.MouseEvent("click", { bubbles: true, cancelable: true, view: w2 }));
+  click2([...doc2.querySelectorAll("a")].find((a) => a.textContent.trim() === "Roots"));
+  await tick();
+  check("progress survives a reload", rendered2().includes("2. Nouns with prefixes"), true);
+  check("the finished lesson is still done",
+    [...doc2.querySelectorAll(".toc-row")].filter((r) => r.getAttribute("data-state") === "done").length, 1);
+  dom2.window.close();
+}
+
+console.log("\n── practice: every class mixed ──");
+const practice = [...doc.querySelectorAll("label")].find((l) => l.textContent.includes("Practice roots"));
+click(practice);
+await tick(200);
+check("the practice drill renders", cells().length, 3);
+check("nothing is announced", rendered().includes("nothing announced"), true);
+/* The lessons announce the class and offer hints; here spotting it is the task. */
+check("no syllabus", tocRows().length, 0);
+check("no hint toggles", doc.querySelectorAll("input[type=checkbox]").length, 0);
+/* One row per class, the eight lessons plus the exceptions. */
+check("a health row per class", doc.querySelectorAll(".health-row").length, CLASSES.length);
+check("every class is named",
+  CLASSES.every((c) => rendered().includes(c.title)), true);
+check("an untouched class reads as untouched",
+  doc.querySelectorAll(".health-fill.health-none").length, CLASSES.length);
+
+console.log("\n── practice: answering ──");
+const pWord = () => txt(".glyph-word");
+const pEntry = () => PRACTICE_WORDS.find((x) => x.he === pWord());
+check("the word comes from the practice pool", Boolean(pEntry()), true);
+await answerWith(pEntry().letters.join(""));
+check("a right answer reads Correct", rendered().includes("Correct"), true);
+/* The reveal names the class, which is what had to be worked out. */
+const cls = pEntry().memorise ? "Exception" : LESSONS.find((l) => l.id === pEntry().lesson).title;
+check("and names the class", rendered().includes(cls), true);
+check("the session count moves", rendered().includes("1 of 1"), true);
+click(btn("Next"));
+await tick();
+check("that class is no longer untouched",
+  doc.querySelectorAll(".health-fill.health-none").length < CLASSES.length, true);
+
+const pSlice = () => JSON.parse(w.localStorage.getItem("hebrew-practice:root-practice") || "null");
+check("practice keeps its own slice", Boolean(pSlice()?.stats), true);
+check("and does not disturb the lessons",
+  JSON.parse(w.localStorage.getItem("hebrew-practice:root-rules")).progress.done.includes("strong"), true);
+
+console.log("\n── the rest of the app ──");
+click(link("Gender and Number"));
+await tick();
+check("gender and number still renders", txt("h1"), "Gender and Number");
+click(link("Transliteration"));
+await tick();
+check("transliteration still renders", txt("h1"), "Transliteration");
+
+console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
+console.log("runtime errors:", errs.length ? errs.slice(0, 4) : "none");
+process.exit(results.every(Boolean) && errs.length === 0 ? 0 : 1);
