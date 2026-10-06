@@ -254,17 +254,23 @@ while (!rendered().includes("3. Two syllables back") && hops < 200) {
   hops++;
 }
 check("reached rule 3", rendered().includes("3. Two syllables back"), true);
-/* The preamble is collapsed by default so it can't shift the keyboard.
-   Mantine keeps collapsed content in the DOM, so test the control, not the text. */
+/* The preamble is hidden by default so it can't shift the keyboard.
+   This used to assert only that the control existed, on the reasoning that a
+   Mantine Collapse keeps its content in the DOM either way — which meant the
+   test passed for a year while the panel stayed at display:none and never
+   actually opened. The text itself is what to assert, both ways. */
+const PREAMBLE_LINE = "Exactly one vowel is squeezed out";
 const preambleToggle = () => btn("How reduction works") ?? btn("Hide");
 check("preamble is behind a disclosure", Boolean(btn("How reduction works")), true);
+check("preamble text is absent while closed", rendered().includes(PREAMBLE_LINE), false);
 click(preambleToggle());
 await tick();
 check("expanding swaps the label", Boolean(btn("Hide")), true);
-check("preamble text is present once open", rendered().includes("Exactly one vowel is squeezed out"), true);
+check("preamble text appears once open", rendered().includes(PREAMBLE_LINE), true);
 click(preambleToggle());
 await tick();
 check("collapses again", Boolean(btn("How reduction works")), true);
+check("preamble text goes away again", rendered().includes(PREAMBLE_LINE), false);
 check("jargon is glossed", doc.querySelectorAll(".glossed").length > 0, true);
 
 console.log("\n── reserved heights keep the keyboard still ──");

@@ -2,7 +2,7 @@
 import { JSDOM, VirtualConsole } from "jsdom";
 import fs from "node:fs";
 import {
-  LESSONS, CLASSES, wordsForLesson, ALL_WORDS, PRACTICE_WORDS, affixSpans,
+  LESSONS, CLASSES, wordsForLesson, ALL_WORDS, PRACTICE_WORDS, affixSpans, markedWord, annotatedWord, bareRoot,
   dotInWord, SHIN_DOT, SIN_DOT,
 } from "./src/features/roots/lessons.js";
 
@@ -83,6 +83,10 @@ const answerWith = async (root) => {
   await tick();
 };
 const rootFor = (he, lessonId) => wordsForLesson(lessonId).find((x) => x.he === he)?.root;
+/* Lesson-agnostic: pinning the lookup to one lesson failed about one run in
+   three, because by then the drill may have moved to the next lesson and the
+   word was simply not in the list being searched. */
+const rootOf = (he) => ALL_WORDS.find((x) => x.he === he)?.root;
 
 console.log("── reaching the drill ──");
 click(link("Roots"));
@@ -148,10 +152,16 @@ check("reached a root that closes with a final form", Boolean(shapeWord), true);
 
 console.log("\n── a wrong answer explains itself ──");
 const wrongWord = word();
-const right = rootFor(wrongWord, "strong");
+const right = rootOf(wrongWord);
+check("the word is one we know the root of", Boolean(right), true);
 await answerWith("זזז");
 check("a wrong answer reads Not quite", rendered().includes("Not quite"), true);
-check("the root is shown", rendered().includes(right), true);
+/* The reveal prints the root as it is written, dot and all, so compare the way
+   the grader does rather than by raw substring — a root containing ש failed
+   otherwise, which is why this passed about four runs in five. */
+check("the root is shown",
+  [...rendered().matchAll(/[\u05D0-\u05EA\u05C1\u05C2]{3,4}/g)]
+    .some((m) => bareRoot(m[0]) === bareRoot(right)), true);
 check("the run resets", meter()?.streak, 0);
 click(btn("Next"));
 await tick();
@@ -251,9 +261,18 @@ check("in a different colour from the clue",
 /* Both hints at once: a cluster takes one colour or the other, never both. */
 toggle.click();
 await tick();
+/* Count against annotatedWord, which is what the component renders from and
+   which decides the precedence when a cluster is both a clue and an affix.
+   Asserting "more than none" failed on any word with nothing to point at, and
+   recomputing the two sets separately double-counted the overlap. */
+const entryNow = ALL_WORDS.find((x) => x.he === word()) ?? {};
+const bothOn = annotatedWord(entryNow, { clue: true, affix: true });
 check("both hints can be on together",
-  doc.querySelectorAll(".glyph-word .slip-mark").length > 0 &&
-  doc.querySelectorAll(".glyph-word .affix-mark").length >= 0, true);
+  doc.querySelectorAll(".glyph-word .slip-mark").length,
+  bothOn.filter((c) => c.kind === "clue").length);
+check("and the affixes are still marked",
+  doc.querySelectorAll(".glyph-word .affix-mark").length,
+  bothOn.filter((c) => c.kind === "affix").length);
 check("no cluster carries both marks",
   [...doc.querySelectorAll(".glyph-word .slip-mark")]
     .every((n) => !n.classList.contains("affix-mark")), true);

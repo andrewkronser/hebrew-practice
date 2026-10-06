@@ -3,6 +3,7 @@ import VocabularyPage from "./features/vocabulary/VocabularyPage.jsx";
 import TypingPage from "./features/typing/TypingPage.jsx";
 import GenderNumberPage from "./features/gender-number/GenderNumberPage.jsx";
 import RootsPage from "./features/roots/RootsPage.jsx";
+import ArticlePage from "./features/article/ArticlePage.jsx";
 import StubPage from "./shared/StubPage.jsx";
 
 /* One source of truth for the sections. The header nav, the mobile navbar and
@@ -23,4 +24,5 @@ export const SECTIONS = [
   { path: "/typing", label: "Learn to Type", Component: TypingPage },
   { path: "/roots", label: "Roots", Component: RootsPage, width: 980 },
   { path: "/gender-and-number", label: "Gender and Number", Component: GenderNumberPage, width: 980 },
+  { path: "/definite-article", label: "The Definite Article", Component: ArticlePage, width: 980 },
 ];

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Anchor, Badge, Box, Button, Collapse, Divider, Grid, Group, Paper, Stack, Text, TextInput,
+  Anchor, Badge, Box, Button, Divider, Grid, Group, Paper, Stack, Text, TextInput,
 } from "@mantine/core";
 import { useRuleDrill } from "./useRuleDrill.js";
 import { RULES, FREE_PRACTICE, REDUCTION_PREAMBLE, ruleById } from "./rules.js";
@@ -82,16 +82,17 @@ export default function PluralDrill({ os = "mac", header = null }) {
             </Stack>
           </Paper>
 
-          {inReduction && (
-            <Collapse in={showPreamble}>
-              <Paper withBorder radius="md" p="md" bg="var(--mantine-color-tekhelet-light)">
-                <Stack gap={4}>
-                  {REDUCTION_PREAMBLE.map((line, i) => (
-                    <Glossed key={i} size="xs">{line}</Glossed>
-                  ))}
-                </Stack>
-              </Paper>
-            </Collapse>
+          {/* Not Collapse: it left this at display:none, so the preamble never
+              actually appeared — and a test that only looked for the text in
+              the DOM found it anyway and passed. */}
+          {inReduction && showPreamble && (
+            <Paper withBorder radius="md" p="md" bg="var(--mantine-color-tekhelet-light)">
+              <Stack gap={4}>
+                {REDUCTION_PREAMBLE.map((line, i) => (
+                  <Glossed key={i} size="xs">{line}</Glossed>
+                ))}
+              </Stack>
+            </Paper>
           )}
 
           <Paper withBorder radius="lg" p="md" shadow="sm">

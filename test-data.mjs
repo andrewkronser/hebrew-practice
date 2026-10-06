@@ -19,6 +19,11 @@ import {
 } from "./src/shared/tempo.js";
 import { DEFAULT_PACING, scoreAnswer } from "./src/shared/progression.js";
 import {
+  LESSONS as A_LESSONS, ALL_WORDS as A_WORDS, CONTENTS as A_CONTENTS,
+  DECISION_TABLE, FREE_PRACTICE as A_FREE, definiteOf, judgeArticle,
+  diagnose as diagnoseArticle, wordsForLesson as articleWords,
+} from "./src/features/article/lessons.js";
+import {
   LESSONS, ALL_WORDS, wordsForLesson, markedWord, sameRoot, diagnose, syllabus,
   judgeRoot, dotInWord, dotName, affixSpans, annotatedWord, bareRoot,
   EXCEPTIONS, PRACTICE_WORDS, CLASSES,
@@ -787,6 +792,127 @@ console.log("\n── the two mastery conditions agree ──");
   check("a hint never earns full credit",
     scoreAnswer({}, item, { correct: true, ms: 10, hinted: true, fastMs: 7000 }).t.s.toFixed(3),
     DEFAULT_PACING.gainSlow.toFixed(3));
+}
+
+console.log("\n── the definite article ──");
+{
+  const DAGESH = "ּ", HE = "ה";
+  const PATAH = "ַ", QAMATS = "ָ", SEGOL = "ֶ";
+  const art = (w) => canonical(w.def).slice(0, 2);
+  const body = (w) => canonical(w.def).slice(2);
+
+  check("five rules plus Free Practice", A_CONTENTS.length, 6);
+  check("the rules are numbered in order",
+    A_CONTENTS.map((s) => s.n).join(""), "123456");
+  check("Free Practice is last and has no streak",
+    [A_CONTENTS.at(-1).id, "streak" in A_FREE], ["free", false]);
+  check("every rule cites Seow", A_LESSONS.every((l) => /^§1/.test(l.seow)), true);
+  check("the decision table covers every rule",
+    new Set(DECISION_TABLE.map((r) => r.rule)).size, 4);
+
+  /* Hand-written from the grammar, not from the code: the point is to catch a
+     derivation that drifts, so these must come from somewhere else. The §1.c
+     seven are in the bank already, and are checked here too. */
+  const EXPECTED = {
+    "מֶלֶךְ": "הַמֶּלֶךְ",      // the king
+    "דָּבָר": "הַדָּבָר",            // the word
+    "בַּיִת": "הַבַּיִת",            // the house
+    "אִישׁ": "הָאִישׁ",                        // the man
+    "עִיר": "הָעִיר",                                    // the city
+    "רֹאשׁ": "הָרֹאשׁ",                        // the head
+    "עָב": "הָעָב",                                                // the cloud
+    "הֵיכָל": "הַהֵיכָל",            // the palace
+    "חֹדֶשׁ": "הַחֹדֶשׁ",            // the new moon
+    "הָמוֹן": "הֶהָמוֹן",            // the uproar
+    "חָכָם": "הֶחָכָם",                        // the wise man
+    "עָוֹן": "הֶעָוֹן",                        // the iniquity
+  };
+  const derived = Object.keys(EXPECTED).filter((he) => A_WORDS.some((w) => canonical(w.he) === canonical(he)));
+  check("every hand-checked word is in the bank", derived.length, Object.keys(EXPECTED).length);
+  for (const [he, want] of Object.entries(EXPECTED)) {
+    const w = A_WORDS.find((x) => canonical(x.he) === canonical(he));
+    check(`${he} → ${want}`, canonical(w.def), canonical(want));
+  }
+
+  /* §1.c changes the noun, so it is written out rather than derived. */
+  const RESHAPED = {
+    "אֲרוֹן": "הָאָרוֹן",  // the ark
+    "אֶרֶץ": "הָאָרֶץ",              // the land
+    "גַּן": "הַגָּן",                          // the garden
+    "הַר": "הָהָר",                                      // the mountain
+    "חַג": "הֶחָג",                                      // the festival
+    "עַם": "הָעָם",                                      // the people
+    "פַּר": "הַפָּר",                          // the bull
+  };
+  const reshape = articleWords("reshape");
+  check("the seven that reshape the noun", reshape.length, 7);
+  for (const [he, want] of Object.entries(RESHAPED)) {
+    const w = reshape.find((x) => canonical(x.he) === canonical(he));
+    check(`${he} → ${want}`, w && canonical(w.def), canonical(want));
+  }
+  check("each reshaped word says what moved", reshape.every((w) => Boolean(w.was)), true);
+
+  /* Invariants over the whole bank, which is what keeps the table above short. */
+  check("the bank is the size we planned", A_WORDS.length >= 40 && A_WORDS.length <= 50, true);
+  check("every word has a definite form", A_WORDS.every((w) => Boolean(w.def)), true);
+  check("every id is unique", new Set(A_WORDS.map((w) => w.id)).size, A_WORDS.length);
+  check("every word belongs to a rule",
+    A_WORDS.every((w) => A_LESSONS.some((l) => l.id === w.lesson)), true);
+  check("every rule has words to draw on",
+    A_LESSONS.every((l) => articleWords(l.id).length >= 7), true);
+  check("the article is always he plus one of three vowels",
+    new Set(A_WORDS.map(art)).size === 3 &&
+      [...new Set(A_WORDS.map(art))].every((a) => a[0] === HE &&
+        [PATAH, QAMATS, SEGOL].includes(a[1])), true);
+  check("only the ordinary rule adds a dagesh",
+    A_WORDS.filter((w) => body(w).includes(DAGESH) && !canonical(w.he).includes(DAGESH))
+      .every((w) => w.lesson === "plain"), true);
+  check("and it always adds one",
+    articleWords("plain").every((w) => {
+      const first = [...body(w)].findIndex((c) => c === DAGESH);
+      return first > 0 && first <= 2;
+    }), true);
+  check("outside §1.c the noun itself is untouched",
+    A_WORDS.filter((w) => w.lesson !== "plain" && w.lesson !== "reshape")
+      .every((w) => body(w) === canonical(w.he)), true);
+  check("עָב is kept as the counterexample to rule 4",
+    A_WORDS.some((w) => canonical(w.he) === canonical("עָב") && w.lesson === "lengthen" && Boolean(w.note)), true);
+
+  /* Grading: strict on the dagesh, forgiving only about letter shape. */
+  const king = A_WORDS.find((w) => w.lesson === "plain" && canonical(w.he) === canonical("מֶלֶךְ"));
+  check("the right form passes", Boolean(judgeArticle(king.def, king)), true);
+  check("whitespace is tolerated", Boolean(judgeArticle(` ${king.def} `, king)), true);
+  const noDot = king.def.replace(DAGESH, "");
+  check("a missing dagesh fails", judgeArticle(noDot, king), null);
+  check("and is told what is missing",
+    /dagesh/.test(diagnoseArticle(noDot, king)), true);
+  const city = A_WORDS.find((w) => canonical(w.he) === canonical("עִיר"));
+  check("an added dagesh fails", judgeArticle(canonical(city.def).slice(0,2) + "עּ" + canonical(city.def).slice(3), city), null);
+  /* A bare ה is the common slip and used to be told "the article here is הַ"
+     when הַ was what they typed, only unvowelled. */
+  check("an unvowelled article is told it needs a vowel",
+    /needs its vowel/.test(diagnoseArticle("\u05D4" + canonical(king.he), king)), true);
+  check("the wrong article is named",
+    /הָ/.test(diagnoseArticle(HE + PATAH + canonical(city.he), city)), true);
+  /* Shape is the one slip forgiven: nothing here teaches final forms. */
+  const sofit = A_WORDS.find((w) => /[ךםןףץ]$/.test(canonical(w.def)));
+  if (sofit) {
+    const medial = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
+    const last = canonical(sofit.def).slice(-1);
+    const wrong = canonical(sofit.def).slice(0, -1) + medial[last];
+    check("a medial letter at the end is forgiven, not ignored",
+      judgeArticle(wrong, sofit)?.forgiven, true);
+  }
+  check("an unrelated word fails", judgeArticle("בַּיִת", king), null);
+
+  /* The derivation is the content, so it is exercised directly too. */
+  check("definiteOf has no rule for §1.c", definiteOf("הַר", "reshape"), null);
+  check("lengthening leaves the word alone",
+    definiteOf("עִיר", "lengthen"), canonical(HE + QAMATS + "עִיר"));
+  check("virtual doubling adds no dot",
+    definiteOf("חֹדֶשׁ", "virtual").includes(DAGESH), false);
+  check("a word that already has a dagesh gains no second one",
+    (definiteOf("בַּיִת", "plain").match(/ּ/g) || []).length, 1);
 }
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
