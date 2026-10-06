@@ -100,10 +100,13 @@ check("warning dismisses", rendered().includes("Typing key positions"), false);
 await tick(700);
 
 console.log("── a long run, then unlocking ──");
+/* The prompt is a single character early on and a whole word once enough keys
+   are unlocked, so this reads either. */
+const prompt = () => txt(".glyph") ?? txt(".glyph-word");
 let answered = 0;
 for (let i = 0; i < 80; i++) {
   if (!field() || doc.querySelector("input[readonly]")) { await tick(); }
-  const g = txt(".glyph");
+  const g = prompt();
   if (!g) break;
   type(g);               // always type the prompt exactly
   await tick(60);
@@ -113,7 +116,7 @@ for (let i = 0; i < 80; i++) {
 check("ran without error", answered > 60, true);
 const unlockedNow = 31 - doc.querySelectorAll(".kbd-locked").length - 4; // 4 punctuation keys
 check("unlocked more than one key", unlockedNow > 1, true);
-check("still rendering a prompt", Boolean(txt(".glyph")), true);
+check("still rendering a prompt", Boolean(prompt()), true);
 
 console.log("── reaching the niqqud stage ──");
 /* Skip ahead with the unlock control; each unlock shows an intro to clear. */

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FORMS, CELLS, SEED_SIZE } from "./data.js";
 import { emptyProgress, pickForm, gradeCell, shouldUnlock, unlock, scoreAnswer } from "./drill.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
+import { useTempo } from "../../shared/useTempo.js";
 
 const SLICE = "gender-number";
 const emptySession = (best = 0) => ({ right: 0, total: 0, streak: 0, best, tape: [] });
@@ -21,6 +22,7 @@ export function useGenderNumber() {
   });
   const [session, setSession] = useState(() => emptySession(saved?.best ?? 0));
   const [showTranslit, setShowTranslit] = useState(() => saved?.showTranslit ?? false);
+  const tempo = useTempo(saved?.tempo);
   const [card, setCard] = useState(null);
   const [result, setResult] = useState(null);   // { correct, chosen }
 
@@ -41,8 +43,8 @@ export function useGenderNumber() {
   useEffect(() => { deal(); }, [deal]);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, best: session.best, showTranslit });
-  }, [progress, session.best, showTranslit]);
+    saveSlice(SLICE, { progress, best: session.best, showTranslit, tempo: tempo.tempo });
+  }, [progress, session.best, showTranslit, tempo.tempo]);
 
   const answer = useCallback((cell) => {
     if (!card || card.kind !== "quiz" || result) return;
@@ -64,10 +66,12 @@ export function useGenderNumber() {
       };
     });
 
+    tempo.record(ms);
+
     setProgress((p) => {
       let next = {
         ...p,
-        stats: scoreAnswer(p.stats, form, { correct, ms, hinted: false }),
+        stats: scoreAnswer(p.stats, form, { correct, ms, hinted: false, fastMs: tempo.bar() }),
         since: p.since + 1,
       };
       if (shouldUnlock(next)) next = unlock(next);
@@ -87,6 +91,7 @@ export function useGenderNumber() {
   }, [deal]);
 
   const resetAll = useCallback(() => {
+    tempo.reset();
     clearSlice(SLICE);
     const fresh = emptyProgress();
     progressRef.current = fresh;

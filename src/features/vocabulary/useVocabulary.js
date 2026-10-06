@@ -12,6 +12,7 @@ import { WORD_BANK } from "./data.js";
 import { buildFor, advanceCursor, answerWeight, DIRECTIONS } from "./quiz.js";
 import { baseProgress, activeItems, createProgression } from "../../shared/progression.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
+import { useTempo } from "../../shared/useTempo.js";
 
 const SLICE = "vocabulary";
 
@@ -24,7 +25,7 @@ export const START_UNLOCKED = 4;
    word per unlock, because the headroom that buys the bigger step is gone. */
 const engine = createProgression({
   items: WORD_BANK,
-  pacing: { startUnlocked: START_UNLOCKED, maxStep: 4 },
+  pacing: { startUnlocked: START_UNLOCKED, maxStep: 6 },
 });
 
 export const DIRECTION_IDS = Object.keys(DIRECTIONS);
@@ -77,6 +78,7 @@ export function useVocabulary() {
      toward the unlock gate, but stay available as distractors — they are still
      words you know, which is exactly what makes a good wrong answer. */
   const [disabled, setDisabled] = useState(() => saved?.disabled ?? {});
+  const tempo = useTempo(saved?.tempo);
 
   /* Transliteration under the prompt. Off by default: it's a crutch, and the
      point of the drill is reading the Hebrew. Always shown in the reveal. */
@@ -117,8 +119,8 @@ export function useVocabulary() {
   useEffect(() => { deal(); }, [deal]);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, best: session.best, disabled, showTranslit, direction });
-  }, [progress, session.best, disabled, showTranslit, direction]);
+    saveSlice(SLICE, { progress, best: session.best, disabled, showTranslit, direction, tempo: tempo.tempo });
+  }, [progress, session.best, disabled, showTranslit, direction, tempo.tempo]);
 
   /** Dismiss an introduction and move the word into rotation. */
   const acknowledge = useCallback(() => {
@@ -149,6 +151,8 @@ export function useVocabulary() {
       };
     });
 
+    tempo.record(ms);
+
     const dir = directionRef.current;
     /* Per-word score, per-sense question: a miss on a rare gloss should not
        condemn a word whose main meaning is solid. */
@@ -159,7 +163,7 @@ export function useVocabulary() {
         ...p,
         stats: {
           ...p.stats,
-          [dir]: engine.scoreAnswer(p.stats[dir] ?? {}, word, { correct, ms, hinted: false, weight }),
+          [dir]: engine.scoreAnswer(p.stats[dir] ?? {}, word, { correct, ms, hinted: false, weight, fastMs: tempo.bar() }),
         },
         cursors: { ...p.cursors, [dir]: advanceCursor(p.cursors[dir] ?? {}, word, dir) },
         since: p.since + 1,

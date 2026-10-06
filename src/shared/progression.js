@@ -19,7 +19,17 @@ export const MASTER_SCORE = 0.8;  // confidence at which an item counts as learn
 export const MASTER_TRIES = 3;    // ...given at least this many attempts
 export const COOLDOWN = 4;        // answers between unlocks, at minimum
 export const PATIENCE = 60;       // answers stuck before the engine moves you on regardless
-export const FAST_MS = 4000;      // answering inside this counts as recall, not reconstruction
+export const FAST_MS = 4000;      // fallback bar; trainers measure their own (tempo.js)
+export const GAIN_FAST = 0.42;    // credit for a recalled answer
+export const GAIN_SLOW = 0.18;    // ...for one that looks reconstructed
+export const NEW_BOOST = 3;       // how much harder an unsettled item is served
+
+/* GAIN_FAST is pinned to MASTER_TRIES rather than chosen freely: at 0.42 an
+   item reaches MASTER_SCORE in exactly three correct answers, so the two
+   mastery conditions agree. They used not to — at 0.34 the score needed a
+   fourth answer the attempt count had already waived, so MASTER_TRIES was dead
+   and every item quietly cost one repetition more than the config claimed. If
+   you change either, check they still land together. */
 
 /** How many items may still be shaky when the next one unlocks. This grows with
  *  the rotation on purpose — see the note above. */
@@ -52,14 +62,16 @@ export function meanScore(items, unlocked, stats) {
    per-word but asked per-sense is the case this exists for: missing a rare
    fifth gloss should not condemn a word whose main meaning you know cold.
    Default 1 — every existing caller behaves exactly as before. */
-export function scoreAnswer(stats, item, { correct, ms, hinted, weight = 1 }) {
+export function scoreAnswer(stats, item, { correct, ms, hinted, weight = 1, fastMs } = {}) {
+  const P = DEFAULT_PACING;
+  const bar = Number.isFinite(fastMs) ? fastMs : P.fastMs;
   const r = statOf(stats, item.id);
   const next = { a: r.a + 1, s: r.s };
   if (correct) {
-    const fast = ms < FAST_MS && !hinted;
-    next.s = r.s + (1 - r.s) * (fast ? 0.34 : 0.18) * weight;
+    const fast = ms < bar && !hinted;
+    next.s = r.s + (1 - r.s) * (fast ? P.gainFast : P.gainSlow) * weight;
   } else {
-    next.s = r.s * (1 - (1 - 0.55) * weight);
+    next.s = r.s * (1 - (1 - P.penalty) * weight);
   }
   return { ...stats, [item.id]: next };
 }
@@ -131,7 +143,7 @@ export function pickWeakFrom(pool, stats, lastId) {
   const weights = pool.map((it) => {
     const r = statOf(stats, it.id);
     let w = Math.pow(1 - r.s, 1.5) * 3 + 0.15;
-    if (r.a < MASTER_TRIES) w *= 2.2;
+    if (r.a < MASTER_TRIES) w *= DEFAULT_PACING.newBoost;
     if (it.id === lastId) w *= 0.05;
     return w;
   });
@@ -169,8 +181,9 @@ export const DEFAULT_PACING = {
   cooldown: COOLDOWN,
   patience: PATIENCE,
   fastMs: FAST_MS,
-  gainFast: 0.34,
-  gainSlow: 0.18,
+  gainFast: GAIN_FAST,
+  gainSlow: GAIN_SLOW,
+  newBoost: NEW_BOOST,
   penalty: 0.55,
   slackFraction: 0.25,
   slackMin: 2,
@@ -206,11 +219,12 @@ export function createProgression({ items, pacing = {}, isExcluded, weightFor } 
     return pool.reduce((t, it) => t + statOf(stats, it.id).s, 0) / pool.length;
   };
 
-  const score = (stats, item, { correct, ms, hinted, weight = 1 }) => {
+  const score = (stats, item, { correct, ms, hinted, weight = 1, fastMs } = {}) => {
+    const bar = Number.isFinite(fastMs) ? fastMs : P.fastMs;
     const r = statOf(stats, item.id);
     const next = { a: r.a + 1, s: r.s };
     if (correct) {
-      const fast = ms < P.fastMs && !hinted;
+      const fast = ms < bar && !hinted;
       next.s = r.s + (1 - r.s) * (fast ? P.gainFast : P.gainSlow) * weight;
     } else {
       next.s = r.s * (1 - (1 - P.penalty) * weight);
@@ -277,7 +291,7 @@ export function createProgression({ items, pacing = {}, isExcluded, weightFor } 
     const weights = pool.map((it) => {
       const r = statOf(stats, it.id);
       let w = Math.pow(1 - r.s, 1.5) * 3 + 0.15;
-      if (r.a < P.masterTries) w *= 2.2;
+      if (r.a < P.masterTries) w *= P.newBoost;
       if (weightFor) w *= weightFor(it, r);
       if (it.id === lastId) w *= 0.05;
       return w;

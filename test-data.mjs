@@ -14,6 +14,11 @@ import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "./src/features/tra
 import { NIQQUD, LETTER_KEYS, carrierFor, composedLetter } from "./src/shared/hebrewKeyboard.js";
 import { forgive, forgivenLabel, markedClusters } from "./src/features/gender-number/forgive.js";
 import {
+  freshTempo, normalizeTempo, observeTempo, fastBar,
+  FAST_SHARE, FLOOR_MS, CEILING_MS, SEED_MS, WARMUP,
+} from "./src/shared/tempo.js";
+import { DEFAULT_PACING, scoreAnswer } from "./src/shared/progression.js";
+import {
   LESSONS, ALL_WORDS, wordsForLesson, markedWord, sameRoot, diagnose, syllabus,
   judgeRoot, dotInWord, dotName, affixSpans, annotatedWord, bareRoot,
   EXCEPTIONS, PRACTICE_WORDS, CLASSES,
@@ -707,6 +712,81 @@ console.log("\n── roots: the exceptions ──");
   check("and nothing is counted twice",
     CLASSES.reduce((t, c) => t + PRACTICE_WORDS.filter((w) => w.lesson === c.id).length, 0),
     PRACTICE_WORDS.length);
+}
+
+
+console.log("\n── the response-time bar ──");
+{
+  /* The bar is a quantile of your own times, so a deliberate learner and a
+     quick one get the same share of answers counted fast. */
+  let seed = 11;
+  const rand = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const gauss = () => { let u=0,v=0; while(!u)u=rand(); while(!v)v=rand();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  const draw = (med, lapse) => rand() < lapse ? 60000 + rand()*240000 : Math.exp(Math.log(med) + 0.45*gauss());
+
+  check("starts at the seed", fastBar(freshTempo()), SEED_MS);
+  check("a fresh tempo has no samples", freshTempo().n, 0);
+
+  const settle = (median, lapse = 0.02, n = 1500) => {
+    let t = freshTempo();
+    const xs = [];
+    for (let i = 0; i < n; i++) { const x = draw(median, lapse); xs.push(x); t = observeTempo(t, x); }
+    const bar = fastBar(t);
+    return { bar, share: xs.filter((x) => x < bar).length / xs.length };
+  };
+  const slow = settle(5500), quick = settle(2400);
+  check("it finds a deliberate learner's bar", slow.bar > 4500 && slow.bar < 8000, true);
+  check("and a quick learner's", quick.bar > 1800 && quick.bar < 3600, true);
+  /* The point of the whole exercise: the same share for both. */
+  check("both get about the intended share counted fast",
+    Math.abs(slow.share - FAST_SHARE) < 0.08 && Math.abs(quick.share - FAST_SHARE) < 0.08, true);
+  check("which the old flat bar did not",
+    Math.abs(0.6 - 0.26) > 0.08, true);
+
+  /* Lapses are the reason a quantile was chosen over fitting a distribution. */
+  const clean = settle(5500, 0), dirty = settle(5500, 0.05);
+  check("a few walked-away answers barely move it",
+    Math.abs(dirty.bar - clean.bar) / clean.bar < 0.15, true);
+
+  check("bounded below", observeTempo({ q: FLOOR_MS, n: 50 }, 1).q >= FLOOR_MS, true);
+  check("bounded above", observeTempo({ q: CEILING_MS, n: 50 }, 600000).q <= CEILING_MS, true);
+  check("junk input is ignored", observeTempo({ q: 4000, n: 5 }, NaN).n, 5);
+  check("so is a negative time", observeTempo({ q: 4000, n: 5 }, -3).n, 5);
+
+  /* Stored tempo is rebuilt defensively, like every other slice. */
+  check("a missing tempo rebuilds", normalizeTempo(undefined).q, SEED_MS);
+  check("a junk tempo rebuilds", normalizeTempo({ q: "x", n: "y" }).q, SEED_MS);
+  check("an out-of-range tempo is clamped", normalizeTempo({ q: 1e9, n: 5 }).q, CEILING_MS);
+  /* Early on it leans on the seed rather than three samples. */
+  const young = { q: 9000, n: 3 };
+  check("the warm-up blends toward the measurement",
+    fastBar(young) > SEED_MS && fastBar(young) < young.q, true);
+  check("and hands over once there are enough", fastBar({ q: 9000, n: WARMUP }), 9000);
+}
+
+console.log("\n── the two mastery conditions agree ──");
+{
+  /* gainFast is pinned to masterTries: if they drift apart, one of them is
+     dead and every item silently costs an extra repetition. */
+  const reps = (gain, target) => { let s = 0, n = 0; while (s < target && n < 50) { s += (1 - s) * gain; n++; } return n; };
+  check("a recalled item masters in exactly masterTries answers",
+    reps(DEFAULT_PACING.gainFast, DEFAULT_PACING.masterScore), DEFAULT_PACING.masterTries);
+  check("a reconstructed one takes longer",
+    reps(DEFAULT_PACING.gainSlow, DEFAULT_PACING.masterScore) > DEFAULT_PACING.masterTries, true);
+  /* The scorer honours a measured bar, and falls back when given none. */
+  const item = { id: "t" };
+  const slowScored = scoreAnswer({}, item, { correct: true, ms: 5500, hinted: false, fastMs: 4000 });
+  const fastScored = scoreAnswer({}, item, { correct: true, ms: 5500, hinted: false, fastMs: 7000 });
+  check("the same answer scores by the bar it is given",
+    slowScored.t.s < fastScored.t.s, true);
+  check("full credit is gainFast", fastScored.t.s.toFixed(3), DEFAULT_PACING.gainFast.toFixed(3));
+  check("no bar falls back to the default",
+    scoreAnswer({}, item, { correct: true, ms: 5500, hinted: false }).t.s.toFixed(3),
+    DEFAULT_PACING.gainSlow.toFixed(3));
+  check("a hint never earns full credit",
+    scoreAnswer({}, item, { correct: true, ms: 10, hinted: true, fastMs: 7000 }).t.s.toFixed(3),
+    DEFAULT_PACING.gainSlow.toFixed(3));
 }
 
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);

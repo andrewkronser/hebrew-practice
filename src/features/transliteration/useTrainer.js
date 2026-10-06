@@ -15,6 +15,7 @@ import {
   pickNext, freePool, shuffled,
 } from "./trainer.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
+import { useTempo } from "../../shared/useTempo.js";
 
 const SLICE = "transliteration";
 
@@ -32,6 +33,7 @@ export function useTrainer() {
   const [progress, setProgress] = useState(() => saved?.progress ?? emptyProgress());
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...(saved?.settings ?? {}) }));
   const [session, setSession] = useState(() => emptySession(saved?.best ?? 0));
+  const tempo = useTempo(saved?.tempo);
 
   const [card, setCard] = useState(null);     // { item, isIntro }
   const [result, setResult] = useState(null); // { correct, revealed }
@@ -76,8 +78,8 @@ export function useTrainer() {
   useEffect(() => { inputRef.current?.focus(); }, [card]);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, settings, best: session.best });
-  }, [progress, settings, session.best]);
+    saveSlice(SLICE, { progress, settings, best: session.best, tempo: tempo.tempo });
+  }, [progress, settings, session.best, tempo.tempo]);
 
   /* ----------------------------------------------------------- answering -- */
 
@@ -99,12 +101,14 @@ export function useTrainer() {
       };
     });
 
+    if (!hinted) tempo.record(ms);
+
     if (settings.track !== "guided") return;
 
     setProgress((p) => {
       const stats = item.word
         ? correct ? p.stats : penalizeWord(p.stats, p.unlocked, item)
-        : scoreAnswer(p.stats, item, { correct, ms, hinted });
+        : scoreAnswer(p.stats, item, { correct, ms, hinted, fastMs: tempo.bar() });
       let next = { ...p, stats, since: p.since + 1 };
       if (shouldUnlock(next)) {
         next = { ...next, introOf: next.unlocked, unlocked: next.unlocked + 1, since: 0 };
@@ -170,6 +174,7 @@ export function useTrainer() {
   }, [deal]);
 
   const resetAll = useCallback(() => {
+    tempo.reset();
     clearSlice(SLICE);
     const fresh = emptyProgress();
     progressRef.current = fresh;

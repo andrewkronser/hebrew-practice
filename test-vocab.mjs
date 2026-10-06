@@ -238,6 +238,19 @@ await tick();
 check("transliteration still works", txt("h1"), "Transliteration");
 check("its answer field is back", Boolean(doc.querySelector('input[aria-label="Transliteration"]')), true);
 
+console.log("\n── the response-time bar is measured here ──");
+{
+  /* Each trainer learns its own bar rather than sharing a flat 4000ms. */
+  const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:vocabulary") || "null");
+  check("a tempo is stored", Boolean(slice?.tempo), true);
+  check("and it has seen the answers given", slice?.tempo?.n > 0, true);
+  check("the bar is a plausible number",
+    slice.tempo.q >= 1200 && slice.tempo.q <= 30000, true);
+  check("it is kept apart from the other trainers",
+    JSON.parse(w.localStorage.getItem("hebrew-practice:transliteration") || "{}").tempo?.q !== slice.tempo.q
+      || !w.localStorage.getItem("hebrew-practice:transliteration"), true);
+}
+
 console.log(`\n${results.filter(Boolean).length}/${results.length} checks passed`);
 console.log("runtime errors:", errs.length ? errs.slice(0, 4) : "none");
 process.exit(results.every(Boolean) && errs.length === 0 ? 0 : 1);

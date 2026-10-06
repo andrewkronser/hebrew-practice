@@ -20,6 +20,7 @@ import {
 } from "../../shared/progression.js";
 import { isLetter } from "../../shared/hebrewLetters.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
+import { useTempo } from "../../shared/useTempo.js";
 
 const SLICE = "root-practice";
 const EMPTY = ["", "", ""];
@@ -39,6 +40,7 @@ export function usePracticeRoots() {
   const saved = useRef(loadSlice(SLICE)).current;
 
   const [stats, setStats] = useState(() => saved?.stats ?? {});
+  const tempo = useTempo(saved?.tempo);
   const [session, setSession] = useState({ right: 0, asked: 0 });
   const [word, setWord] = useState(null);
   const [cells, setCells] = useState(EMPTY);
@@ -52,7 +54,7 @@ export function usePracticeRoots() {
   const focusRef = useRef(0);
 
   useEffect(() => { statsRef.current = stats; }, [stats]);
-  useEffect(() => { saveSlice(SLICE, { stats }); }, [stats]);
+  useEffect(() => { saveSlice(SLICE, { stats, tempo: tempo.tempo }); }, [stats, tempo.tempo]);
 
   const deal = useCallback(() => {
     resultRef.current = null;
@@ -70,7 +72,9 @@ export function usePracticeRoots() {
 
   const settle = useCallback((correct, extra, hinted) => {
     const ms = Date.now() - dealtAt.current;
-    const next = scoreAnswer(statsRef.current, word, { correct, ms, hinted });
+    /* Revealing the answer is not a response time, so it does not set the bar. */
+    if (!hinted) tempo.record(ms);
+    const next = scoreAnswer(statsRef.current, word, { correct, ms, hinted, fastMs: tempo.bar() });
     statsRef.current = next;
     setStats(next);
     setSession((s) => ({ right: s.right + (correct ? 1 : 0), asked: s.asked + 1 }));
@@ -162,6 +166,7 @@ export function usePracticeRoots() {
 
   const resetAll = useCallback(() => {
     clearSlice(SLICE);
+    tempo.reset();
     statsRef.current = {};
     setStats({});
     setSession({ right: 0, asked: 0 });

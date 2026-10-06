@@ -6,6 +6,7 @@ import { capForCode, niqqudById } from "../../shared/hebrewKeyboard.js";
 import { emptyProgress, pickNext, gradeAttempt, shouldUnlock, canonicalLength } from "./typing.js";
 import { scoreAnswer } from "../../shared/progression.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
+import { useTempo } from "../../shared/useTempo.js";
 
 const SLICE = "typing";
 const ADVANCE_MS = 550;   // pause on a correct answer before the next prompt
@@ -24,6 +25,7 @@ export function useTyping() {
 
   const [progress, setProgress] = useState(() => saved?.progress ?? emptyProgress());
   const [session, setSession] = useState(() => emptySession(saved?.best ?? 0));
+  const tempo = useTempo(saved?.tempo);
   const [card, setCard] = useState(null);
   const [value, setValue] = useState("");
   const [result, setResult] = useState(null);   // { correct, marks }
@@ -64,8 +66,8 @@ export function useTyping() {
   useEffect(() => () => clearTimeout(advanceTimer.current), []);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, best: session.best, os, learned });
-  }, [progress, session.best, os, learned]);
+    saveSlice(SLICE, { progress, best: session.best, os, learned, tempo: tempo.tempo });
+  }, [progress, session.best, os, learned, tempo.tempo]);
 
   const settle = useCallback((correct, marks) => {
     const item = card.item;
@@ -86,13 +88,17 @@ export function useTyping() {
       });
     }
 
+    tempo.record(ms);
+
     setProgress((p) => {
       /* A word scores every character it contains; anything else scores itself. */
       const touched = item.word
         ? CURRICULUM.filter((k) => k.idx < p.unlocked && item.chars.includes(k.he))
         : [item];
       let stats = p.stats;
-      for (const k of touched) stats = scoreAnswer(stats, k, { correct, ms, hinted: false });
+      /* One response time, however many characters the word scored. */
+      const fastMs = tempo.bar();
+      for (const k of touched) stats = scoreAnswer(stats, k, { correct, ms, hinted: false, fastMs });
 
       let next = { ...p, stats, since: p.since + (card.isIntro ? 0 : 1) };
       if (!card.isIntro && shouldUnlock(next)) {
@@ -147,6 +153,7 @@ export function useTyping() {
   }, [deal]);
 
   const resetAll = useCallback(() => {
+    tempo.reset();
     clearSlice(SLICE);
     const fresh = emptyProgress();
     progressRef.current = fresh;
