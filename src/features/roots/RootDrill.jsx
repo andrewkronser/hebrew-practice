@@ -6,11 +6,12 @@ import {
   LESSONS, syllabus, lessonById, annotatedWord, dotName, SHIN_DOT, SIN_DOT,
 } from "./lessons.js";
 import { RootCells } from "./components/RootCells.jsx";
-import { SyllabusContents, StreakMeter } from "../../shared/components/SyllabusContents.jsx";
-import { BidiText } from "../../shared/components/BidiText.jsx";
+import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
+import { Prose } from "../../shared/components/Prose.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { ROWS } from "../../shared/hebrewKeyboard.js";
 import { loadSlice } from "../../shared/storage.js";
+import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Layout follows "Write the form": the syllabus is a sticky column dressed as
    an aside, and the page header sits inside the reading column so the dividing
@@ -67,7 +68,7 @@ export default function RootDrill({ header = null, onFinish }) {
                   <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>Seow {lesson.seow}</Text>
                 </Group>
 
-                <BidiText size="sm">{lesson.statement}</BidiText>
+                <Prose size="sm">{lesson.statement}</Prose>
 
                 {!d.revising && <StreakMeter streak={progress.streak} target={d.target} />}
                 {/* Revising, with a lesson still in progress to go back to. */}
@@ -149,7 +150,7 @@ export default function RootDrill({ header = null, onFinish }) {
 
       <Grid.Col span={{ base: 12, sm: 4 }} order={{ base: 2, sm: 2 }} className="aside-col">
         <Box className="toc-sticky">
-          <SyllabusContents
+          <GuidedContents
             steps={LESSONS}
             progress={progress}
             stateOf={syllabus.stateOf}
@@ -191,9 +192,7 @@ function Reveal({ word, result, onNext }) {
       <Divider w="100%" opacity={0.4} />
 
       <Group gap="sm" align="baseline" wrap="nowrap">
-        <Text size="sm" fw={700} c={result.correct ? "teal" : "red"}>
-          {result.correct ? "Correct" : result.revealed ? "Answer" : "Not quite"}
-        </Text>
+        <Verdict result={result} />
         {(!result.correct || result.forgiven) && (
           <Box className="hebrew" fz={24} dir="rtl">{word.letters.join("")}</Box>
         )}
@@ -210,7 +209,7 @@ function Reveal({ word, result, onNext }) {
       )}
 
       {word.note && (
-        <BidiText size="xs" c="dimmed" ta="center" maw={520}>{word.note}</BidiText>
+        <Prose size="xs" c="dimmed" ta="center" maw={520}>{word.note}</Prose>
       )}
 
       {completed && (

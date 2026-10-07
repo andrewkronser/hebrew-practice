@@ -4,7 +4,7 @@ import { useTyping } from "./useTyping.js";
 import { hebrewToKey, niqqudHint } from "../../shared/hebrewKeyboard.js";
 import { CURRICULUM, active, gateLabel, unlockedChars, typableWords, POINTED_WORDS, BARE_WORDS } from "./typing.js";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
-import { StatsTape } from "../transliteration/components/ProgressGrid.jsx";
+import { StatsTape } from "../../shared/components/StatsTape.jsx";
 
 /* Names the key for a letter, so a miss can say which keys the word needed. */
 const keyFor = (ch) => hebrewToKey.get(ch);

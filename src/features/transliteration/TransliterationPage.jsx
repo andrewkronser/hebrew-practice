@@ -4,7 +4,8 @@ import {
 import { DIACRITIC_KEYS } from "./data.js";
 import { useTrainer } from "./useTrainer.js";
 import { AnswerReveal, RecentNames } from "./components/AnswerReveal.jsx";
-import { ProgressGrid, StatsTape } from "./components/ProgressGrid.jsx";
+import { ProgressGrid } from "./components/ProgressGrid.jsx";
+import { StatsTape } from "../../shared/components/StatsTape.jsx";
 import { ConventionsPanel } from "./components/ConventionsPanel.jsx";
 
 export default function TransliterationPage() {

@@ -2,12 +2,13 @@ import { useState } from "react";
 import {
   Anchor, Badge, Box, Button, Divider, Grid, Group, Paper, Stack, Text, TextInput,
 } from "@mantine/core";
-import { useRuleDrill } from "./useRuleDrill.js";
-import { RULES, FREE_PRACTICE, REDUCTION_PREAMBLE, ruleById } from "./rules.js";
-import { RuleContents, StreakMeter } from "./components/RuleContents.jsx";
-import { Glossed } from "./components/RuleStatement.jsx";
+import { useRuleDrill, ruleState } from "./useRuleDrill.js";
+import { CONTENTS, FREE_PRACTICE, GLOSSARY, REDUCTION_PREAMBLE, ruleById } from "./rules.js";
+import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
+import { Prose } from "../../shared/components/Prose.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { forgivenLabel, markedClusters } from "./forgive.js";
+import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Layout note: the syllabus column is styled to read as an aside — a pinned,
    full-height region with a dividing rule — without being an AppShell.Aside.
@@ -61,7 +62,7 @@ export default function PluralDrill({ os = "mac", header = null }) {
                 )}
               </Group>
 
-              <Glossed size="sm">{d.isFree ? FREE_PRACTICE.statement : rule.statement}</Glossed>
+              <Prose terms={GLOSSARY} size="sm">{d.isFree ? FREE_PRACTICE.statement : rule.statement}</Prose>
 
               {/* The streak belongs to the rule in progress, so while you are
                   revising a finished one there is no run to show here — the
@@ -89,7 +90,7 @@ export default function PluralDrill({ os = "mac", header = null }) {
             <Paper withBorder radius="md" p="md" bg="var(--mantine-color-tekhelet-light)">
               <Stack gap={4}>
                 {REDUCTION_PREAMBLE.map((line, i) => (
-                  <Glossed key={i} size="xs">{line}</Glossed>
+                  <Prose terms={GLOSSARY} key={i} size="xs">{line}</Prose>
                 ))}
               </Stack>
             </Paper>
@@ -171,7 +172,16 @@ export default function PluralDrill({ os = "mac", header = null }) {
 
       <Grid.Col span={{ base: 12, sm: 4 }} order={{ base: 2, sm: 2 }} className="aside-col">
         <Box className="toc-sticky">
-          <RuleContents progress={progress} onSelect={d.goToRule} />
+          {/* This mode predates the shared syllabus and still keeps its step in
+              a field called `ruleId`, which is persisted. Renaming it means
+              migrating saved progress, so until that happens the shape is
+              adapted here rather than in storage. */}
+          <GuidedContents
+            steps={CONTENTS}
+            progress={{ ...progress, stepId: progress.ruleId }}
+            stateOf={ruleState}
+            onSelect={d.goToRule}
+          />
           <Group justify="flex-end" mt="xs">
             <Anchor component="button" type="button" size="xs" c="dimmed" onClick={d.resetAll}>
               Start over
@@ -194,9 +204,7 @@ function Reveal({ prompt, result, onNext }) {
       <Divider w="100%" opacity={0.4} />
 
       <Group gap="sm" align="baseline" wrap="nowrap">
-        <Text size="sm" fw={700} c={result.correct ? "teal" : "red"}>
-          {result.correct ? "Correct" : result.revealed ? "Answer" : "Not quite"}
-        </Text>
+        <Verdict result={result} />
         {/* A forgiven answer still shows the form, so the slip is visible
             rather than merely described. */}
         {(!result.correct || result.forgiven) && (
@@ -222,7 +230,7 @@ function Reveal({ prompt, result, onNext }) {
       )}
 
       {prompt.note && (
-        <Glossed size="xs" c="dimmed" ta="center" maw={520}>{prompt.note}</Glossed>
+        <Prose terms={GLOSSARY} size="xs" c="dimmed" ta="center" maw={520}>{prompt.note}</Prose>
       )}
 
       {completed && (

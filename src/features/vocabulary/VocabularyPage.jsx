@@ -4,7 +4,8 @@ import {
 import { useVocabulary } from "./useVocabulary.js";
 import { DIRECTIONS } from "./quiz.js";
 import { WordBank } from "./components/WordBank.jsx";
-import { StatsTape } from "../transliteration/components/ProgressGrid.jsx";
+import { StatsTape } from "../../shared/components/StatsTape.jsx";
+import { Verdict } from "../../shared/components/Verdict.jsx";
 
 export default function VocabularyPage() {
   const v = useVocabulary();
@@ -160,9 +161,7 @@ function Question({ question, result, showTranslit, onAnswer, onNext }) {
         <>
           <Divider w="100%" opacity={0.4} />
           <Stack gap={6} align="center">
-            <Text size="sm" fw={700} c={result.correct ? "teal" : "red"}>
-              {result.correct ? "Correct" : "Not quite"}
-            </Text>
+            <Verdict result={result} />
             <Text size="sm" ta="center">
               <Box component="span" className="hebrew" fz="lg">{word.he}</Box>
               {" "}

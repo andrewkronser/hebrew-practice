@@ -1,12 +1,15 @@
 import { Paper, Group, Stack, Text, Box, Divider } from "@mantine/core";
+import { verdictOf } from "../../../shared/components/Verdict.jsx";
 
 /* Shown once you've answered. For a single character the letter's *name* is the
    largest thing here on purpose — the glyph and its transliteration are already
    in front of you, but the name is the part that needs drilling. */
 
 export function AnswerReveal({ item, correct, revealed, style }) {
-  const tone = revealed ? "gray" : correct ? "teal" : "red";
-  const verdict = revealed ? "Answer" : correct ? "Correct" : "Not quite";
+  /* The word and the colour come from the shared primitive; the uppercase
+     treatment and the tinted panel stay here, because this reveal is a panel of
+     its own rather than a line beside the answer. */
+  const { tone, label: verdict } = verdictOf({ correct, revealed });
   const isWord = Boolean(item.word);
 
   return (

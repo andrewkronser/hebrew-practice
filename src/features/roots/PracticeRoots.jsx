@@ -5,10 +5,11 @@ import { usePracticeRoots } from "./usePracticeRoots.js";
 import { lessonById, dotName, SHIN_DOT, SIN_DOT } from "./lessons.js";
 import { RootCells } from "./components/RootCells.jsx";
 import { ClassHealth } from "./components/ClassHealth.jsx";
-import { BidiText } from "../../shared/components/BidiText.jsx";
+import { Prose } from "../../shared/components/Prose.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { ROWS } from "../../shared/hebrewKeyboard.js";
 import { loadSlice } from "../../shared/storage.js";
+import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Same layout as the lessons, with the syllabus swapped for the health
    readout — and no hint toggles. There the class is announced and the switches
@@ -111,9 +112,7 @@ function Reveal({ word, result, onNext }) {
       <Divider w="100%" opacity={0.4} />
 
       <Group gap="sm" align="baseline" wrap="nowrap">
-        <Text size="sm" fw={700} c={result.correct ? "teal" : "red"}>
-          {result.correct ? "Correct" : result.revealed ? "Answer" : "Not quite"}
-        </Text>
+        <Verdict result={result} />
         {(!result.correct || result.forgiven) && (
           <Box className="hebrew" fz={24} dir="rtl">{word.letters.join("")}</Box>
         )}
@@ -134,7 +133,7 @@ function Reveal({ word, result, onNext }) {
       )}
 
       {word.note && (
-        <BidiText size="xs" c="dimmed" ta="center" maw={520}>{word.note}</BidiText>
+        <Prose size="xs" c="dimmed" ta="center" maw={520}>{word.note}</Prose>
       )}
 
       <Button size="xs" variant="light" onClick={onNext} mt={2}>Next</Button>

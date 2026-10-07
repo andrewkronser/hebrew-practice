@@ -94,6 +94,16 @@ await tick();
 check("page heading", txt("h1"), "Roots");
 check("both modes offered", /Learn root rules/.test(rendered()) && /Practice roots/.test(rendered()), true);
 check("three cells", cells().length, 3);
+
+/* Lesson 1's statement opens with Hebrew mid-sentence, and measured in a real
+   browser ten of its characters land in the wrong place when the run is not
+   isolated. This is the case that actually needs the handling, so it is the one
+   worth pinning after folding the two text components into one. */
+check("Hebrew inside a lesson statement is isolated",
+  [...doc.querySelectorAll(".rule-panel .hebrew, .lesson-panel .hebrew")]
+    .some((n) => n.getAttribute("dir") === "rtl")
+  || [...doc.querySelectorAll('[style*="isolate"]')].length > 0,
+  true);
 check("cells are labelled by position",
   cells().map((c) => c.getAttribute("aria-label")).join(","),
   "first radical,second radical,third radical");

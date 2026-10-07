@@ -74,6 +74,35 @@ await tick();
 check("typing field appears", Boolean(field()), true);
 check("starts on rule 1", rendered().includes("1. The masculine plural ending"), true);
 
+/* A Hebrew run inside an English sentence, isolated. This mode's text component
+   used to do glossing only, so these ran unisolated — which happened to look
+   right: measured against the isolated rendering, none of the four statements
+   with Hebrew in them moved a single character, because one run followed by a
+   comma or full stop resolves to the paragraph direction on its own. The damage
+   needs a run leading the line or two runs with neutrals between them, as the
+   roots statements have. So this asserts the handling is applied here, not that
+   a visible bug was fixed — it is the next statement with Hebrew mid-sentence
+   that would have gone wrong. */
+check("Hebrew inside a statement is isolated",
+  [...doc.querySelectorAll(".rule-panel .hebrew")].some((n) => n.getAttribute("dir") === "rtl"),
+  true);
+
+/* A revealed answer is gray, not red — asking to see the answer isn't the same
+   as getting it wrong. The typed modes used to redden it while transliteration
+   greyed it; one primitive now decides. */
+click(btn("Show answer"));
+await tick();
+{
+  const node = [...doc.querySelectorAll(".drill-footer *")]
+    .find((n) => !n.children.length && n.textContent.trim() === "Answer");
+  check("a revealed answer reads as an answer", Boolean(node), true);
+  check("and is toned gray, not red",
+    /gray-text/.test(node?.getAttribute("style") ?? ""), true);
+}
+click(btn("Next"));
+await tick(60);
+
+
 console.log("\n── a word with a spelling hint ──");
 /* גוי is the one word whose correct spelling can't be derived from the rule:
    the ending's yod is not written because the root already ends in one. */

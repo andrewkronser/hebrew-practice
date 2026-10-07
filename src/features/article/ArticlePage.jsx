@@ -6,10 +6,11 @@ import { useArticleDrill } from "./useArticleDrill.js";
 import {
   CONTENTS, DECISION_TABLE, FREE_PRACTICE, lessonById, syllabus,
 } from "./lessons.js";
-import { SyllabusContents, StreakMeter } from "../../shared/components/SyllabusContents.jsx";
-import { BidiText } from "../../shared/components/BidiText.jsx";
+import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
+import { Prose } from "../../shared/components/Prose.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { loadSlice } from "../../shared/storage.js";
+import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Same layout as the plural rules: the syllabus is a sticky column dressed as
    an aside, and the page header sits inside the reading column so the dividing
@@ -55,7 +56,7 @@ export default function ArticlePage() {
                 <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>Seow {step.seow}</Text>
               </Group>
 
-              <BidiText size="sm">{step.statement}</BidiText>
+              <Prose size="sm">{step.statement}</Prose>
 
               {!d.isFree && !d.revising && (
                 <StreakMeter streak={progress.streak} target={d.target} />
@@ -166,7 +167,7 @@ export default function ArticlePage() {
 
       <Grid.Col span={{ base: 12, sm: 4 }} order={{ base: 2, sm: 2 }} className="aside-col">
         <Box className="toc-sticky">
-          <SyllabusContents
+          <GuidedContents
             steps={CONTENTS}
             progress={progress}
             stateOf={syllabus.stateOf}
@@ -200,9 +201,7 @@ function Reveal({ word, result, onNext }) {
       <Divider w="100%" opacity={0.4} />
 
       <Group gap="sm" align="baseline" wrap="nowrap">
-        <Text size="sm" fw={700} c={result.correct ? "teal" : "red"}>
-          {result.correct ? "Correct" : result.revealed ? "Answer" : "Not quite"}
-        </Text>
+        <Verdict result={result} />
         {(!result.correct || result.forgiven) && (
           <Box className="hebrew" fz={24} dir="rtl">{word.def}</Box>
         )}
@@ -219,7 +218,7 @@ function Reveal({ word, result, onNext }) {
       )}
 
       {word.note && (
-        <BidiText size="xs" c="dimmed" ta="center" maw={520}>{word.note}</BidiText>
+        <Prose size="xs" c="dimmed" ta="center" maw={520}>{word.note}</Prose>
       )}
       {word.was && (
         <Text size="xs" c="dimmed" ta="center" maw={520}>{word.was}</Text>

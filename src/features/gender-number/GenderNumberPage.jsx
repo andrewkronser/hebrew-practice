@@ -8,7 +8,8 @@ import PluralDrill from "./PluralDrill.jsx";
 import { loadSlice, saveSlice } from "../../shared/storage.js";
 import { FORMS, CELLS, GENDERS, NUMBERS } from "./data.js";
 import { correctCells, gateLabel } from "./drill.js";
-import { StatsTape } from "../transliteration/components/ProgressGrid.jsx";
+import { StatsTape } from "../../shared/components/StatsTape.jsx";
+import { Verdict } from "../../shared/components/Verdict.jsx";
 
 const MODE_SLICE = "gender-number-mode";
 
@@ -173,9 +174,7 @@ function Question({ form, result, showTranslit, onAnswer, onNext }) {
         <>
           <Divider w="100%" opacity={0.4} />
           <Stack gap={6} align="center">
-            <Text size="sm" fw={700} c={result.correct ? "teal" : "red"}>
-              {result.correct ? "Correct" : "Not quite"}
-            </Text>
+            <Verdict result={result} />
             <Text size="sm" ta="center">
               <Box component="span" className="hebrew" fz="lg">{form.he}</Box>
               {" "}

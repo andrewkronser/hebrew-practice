@@ -255,4 +255,8 @@ export const ALL_PROMPTS = RULES.flatMap((rule) =>
 );
 
 export const ruleById = new Map(RULES.map((r) => [r.id, r]));
+
+/* The rules plus Free Practice, as the contents lists them — the same shape the
+   other guided topics expose, so they can share one contents component. */
+export const CONTENTS = [...RULES, FREE_PRACTICE];
 export const promptsForRule = (ruleId) => ALL_PROMPTS.filter((p) => p.ruleId === ruleId);
