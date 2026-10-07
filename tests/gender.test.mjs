@@ -85,7 +85,7 @@ check("ran without error", answered >= 60, true);
 check("still rendering a question", cellButtons().length, 6);
 
 console.log("\n── persistence and isolation ──");
-const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:gender-number") || "null");
+const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:gender-number-adaptive") || "null");
 check("slice saved", Boolean(slice), true);
 check("unlocked persisted", slice?.progress?.unlocked >= 6, true);
 check("no stale intro state saved", "introOf" in (slice?.progress ?? {}), false);

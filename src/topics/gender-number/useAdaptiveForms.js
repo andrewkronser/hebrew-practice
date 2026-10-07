@@ -6,7 +6,7 @@ import { emptyProgress, pickForm, gradeCell, shouldUnlock, unlock, scoreAnswer }
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 import { useTempo } from "../../shared/useTempo.js";
 
-const SLICE = "gender-number";
+const SLICE = "gender-number-adaptive";
 const emptySession = (best = 0) => ({ right: 0, total: 0, streak: 0, best, tape: [] });
 
 export function useAdaptiveForms() {

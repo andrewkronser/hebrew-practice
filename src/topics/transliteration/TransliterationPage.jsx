@@ -13,7 +13,7 @@ export default function TransliterationPage() {
   if (!t.card) return null;
 
   const { item, isIntro } = t.card;
-  const { settings, result, guided, seow } = t;
+  const { settings, result, unlocking, seow } = t;
 
   const prompt = isIntro
     ? "Type it once to add it to your rotation"
@@ -38,9 +38,10 @@ export default function TransliterationPage() {
         <SegmentedControl
           fullWidth
           size="xs" value={settings.track} onChange={t.changeTrack}
-          data={[{ label: "Guided", value: "guided" }, { label: "Free practice", value: "free" }]}
+          data={[{ label: "Unlock letters", value: "curriculum" },
+                 { label: "Practice everything", value: "everything" }]}
         />
-        {!guided && (
+        {!unlocking && (
           <SegmentedControl
             fullWidth
             size="xs" value={settings.freeMode} onChange={t.changeFreeMode}
@@ -142,7 +143,7 @@ export default function TransliterationPage() {
 
       <StatsTape session={t.session} />
 
-      {guided && (
+      {unlocking && (
         <Box mt="md">
           <ProgressGrid progress={t.progress} onUnlockNext={t.unlockNext} onReset={t.resetAll} />
         </Box>
@@ -152,7 +153,7 @@ export default function TransliterationPage() {
 
       <Text size="xs" c="dimmed" lh={1.6}>
         Enter checks, Enter again moves on.{" "}
-        {guided && "Characters you keep missing come up more often; steady ones fade back. "}
+        {unlocking && "Characters you keep missing come up more often; steady ones fade back. "}
         {seow && settings.strict === "exact"
           ? "Every mark has to match Seow exactly — ḥ is not h, and the parentheses count."
           : "Marks are optional while you learn: h counts for ḥ, torah for tôrā(h)."}

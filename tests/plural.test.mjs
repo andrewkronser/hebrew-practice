@@ -54,8 +54,8 @@ check("the write-the-form module loads", typeof GuidedForms, "function");
 console.log("── reaching the mode ──");
 await goTo("Gender and Number");
 check("page heading", txt("h1"), "Gender and Number");
-check("mode toggle present", Boolean(radio("form")), true);
-radio("form").click();
+check("mode toggle present", Boolean(radio("guided")), true);
+radio("guided").click();
 await settle();
 check("typing field appears", Boolean(field()), true);
 check("starts on rule 1", rendered().includes("1. The masculine plural ending"), true);
@@ -250,10 +250,10 @@ check("rule 2 is still marked in progress", stateOf(1), "active");
 check("rule 2 is still clickable", tocRows()[1].classList.contains("toc-locked"), false);
 
 /* Revising a finished rule is practice, not progress. */
-const doneBefore = JSON.parse(w().localStorage.getItem("hebrew-practice:plural-rules")).progress.done.length;
+const doneBefore = JSON.parse(w().localStorage.getItem("hebrew-practice:gender-number-guided")).progress.done.length;
 await answerCorrectly();
 await answerCorrectly();
-const doneAfter = JSON.parse(w().localStorage.getItem("hebrew-practice:plural-rules")).progress.done.length;
+const doneAfter = JSON.parse(w().localStorage.getItem("hebrew-practice:gender-number-guided")).progress.done.length;
 check("answering a finished rule changes nothing", doneAfter, doneBefore);
 
 click(tocRows()[1]);
@@ -388,7 +388,7 @@ click(tocRow(onFrontier));
 await settle();
 check("re-clicking the current rule keeps the run", meter()?.streak, partial.streak);
 
-const stored = () => JSON.parse(w().localStorage.getItem("hebrew-practice:plural-rules") || "null");
+const stored = () => JSON.parse(w().localStorage.getItem("hebrew-practice:gender-number-guided") || "null");
 check("streak written to storage", stored()?.progress?.streak, partial.streak);
 
 /* A real reload: a second document reading the same storage. Reassigning `h`
@@ -399,7 +399,7 @@ check("streak written to storage", stored()?.progress?.streak, partial.streak);
   const first = h;
   h = await mount(seeded);
   await goTo("Gender and Number");
-  radio("form")?.click();
+  radio("guided")?.click();
   await settle();
   const m2 = rendered().match(/(\d+) of (\d+) in a row/);
   check("run survives a reload", m2 && Number(m2[1]), partial.streak);
@@ -427,12 +427,12 @@ check("the rule in progress moved on", frontierTitle() !== before, true);
 check("run restarts at zero on the new rule", meter()?.streak, 0);
 
 console.log("\n── persistence ──");
-const slice = JSON.parse(w().localStorage.getItem("hebrew-practice:plural-rules") || "null");
+const slice = JSON.parse(w().localStorage.getItem("hebrew-practice:gender-number-guided") || "null");
 check("slice saved", Boolean(slice), true);
 check("completed rules recorded", Array.isArray(slice?.progress?.done) && slice.progress.done.length >= 2, true);
 
 console.log("\n── the other mode still works ──");
-radio("identify").click();
+radio("adaptive").click();
 await settle();
 check("identify mode renders", doc().querySelectorAll("button[aria-label]").length > 0, true);
 await goTo("Vocabulary");

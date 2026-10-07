@@ -210,7 +210,7 @@ check("and nothing locked any more",
   tocRows().filter((r) => r.getAttribute("data-state") === "locked").length, 0);
 
 console.log("\n── starting over ──");
-/* We are on Free Practice, which shows no streak meter — the thing to lose
+/* We are on Mixed Review, which shows no streak meter — the thing to lose
    here is the five finished rules. */
 await answerCorrectly();
 check("there is progress to lose", saved().progress.done.length, LESSONS.length);

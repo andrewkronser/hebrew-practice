@@ -286,7 +286,7 @@ check("the run on the frontier is untouched", meter()?.streak, before);
 check("locked lessons cannot be opened", tocRow("III-Hē")?.disabled, true);
 
 console.log("\n── persistence ──");
-const slice = JSON.parse(w().localStorage.getItem("hebrew-practice:root-rules") || "null");
+const slice = JSON.parse(w().localStorage.getItem("hebrew-practice:roots-guided") || "null");
 check("slice saved", Boolean(slice), true);
 check("the finished lesson is recorded", slice?.progress?.done?.includes("strong"), true);
 
@@ -335,10 +335,10 @@ await settle();
 check("that class is no longer untouched",
   doc().querySelectorAll(".health-fill.health-none").length < CLASSES.length, true);
 
-const pSlice = () => JSON.parse(w().localStorage.getItem("hebrew-practice:root-practice") || "null");
+const pSlice = () => JSON.parse(w().localStorage.getItem("hebrew-practice:roots-adaptive") || "null");
 check("practice keeps its own slice", Boolean(pSlice()?.stats), true);
 check("and does not disturb the lessons",
-  JSON.parse(w().localStorage.getItem("hebrew-practice:root-rules")).progress.done.includes("strong"), true);
+  JSON.parse(w().localStorage.getItem("hebrew-practice:roots-guided")).progress.done.includes("strong"), true);
 
 console.log("\n── the rest of the app ──");
 await goTo("Gender and Number");

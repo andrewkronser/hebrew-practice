@@ -172,13 +172,9 @@ export default function GuidedForms({ os = "mac", header = null }) {
 
       <Grid.Col span={{ base: 12, sm: 4 }} order={{ base: 2, sm: 2 }} className="aside-col">
         <Box className="toc-sticky">
-          {/* This mode predates the shared syllabus and still keeps its step in
-              a field called `ruleId`, which is persisted. Renaming it means
-              migrating saved progress, so until that happens the shape is
-              adapted here rather than in storage. */}
           <GuidedContents
             steps={CONTENTS}
-            progress={{ ...progress, stepId: progress.ruleId }}
+            progress={progress}
             stateOf={ruleState}
             onSelect={d.goToRule}
           />
@@ -197,7 +193,7 @@ export default function GuidedForms({ os = "mac", header = null }) {
 /* The input above still shows what you typed, so this doesn't repeat it — just
    the verdict, the form that was wanted, and why your answer missed. */
 function Reveal({ prompt, result, onNext }) {
-  const completed = result.justCompleted ? ruleById.get(result.justCompleted) : null;
+  const completed = result.completed ? ruleById.get(result.completed) : null;
 
   return (
     <Stack gap={6} align="center" w="100%">

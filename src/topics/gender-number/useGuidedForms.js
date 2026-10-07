@@ -1,9 +1,9 @@
-/* Rule-by-rule plural formation.
+/* Rule-by-rule plural formation: the guided exercise of Gender and Number.
 
-   No confidence engine here. The other trainers interleave many items and need
-   weighted selection and an unlock gate; this one works through a syllabus. You
-   stay on one rule until you can do it, then the next opens. So the whole model
-   is: which rule you are on, and how long your current streak is.
+   The progression lives in shared/guided.js, the same engine the roots lessons
+   and the definite article use. This file used to hand-roll its own copy of it
+   — the frontier, the states, the streak accounting — which predated the shared
+   one and meant "guided" had two implementations that could drift apart.
 
    A streak resets on any wrong answer, typos included — typing pointed Hebrew
    accurately is part of what this drills, so a slipped consonant is a miss.
@@ -12,30 +12,18 @@
    ends up, not another thing to finish. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RULES, ALL_PROMPTS, promptsForRule, ERRORS } from "./rules.js";
+import { RULES, ALL_PROMPTS, promptsForRule, ERRORS, syllabus } from "./rules.js";
 import { canonical } from "../typing/typing.js";
 import { forgive } from "./forgive.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
-const SLICE = "plural-rules";
-const MIXED = "free";
+const SLICE = "gender-number-guided";
+const { MIXED } = syllabus;
 
-const freshProgress = () => ({ ruleId: RULES[0].id, streak: 0, done: [] });
-
-/* The rule you have reached: the first one not yet finished, or Free Practice
-   once they all are. Derived rather than stored, so it cannot drift out of step
-   with `done` — and so revising a finished rule never loses your place. */
-export function frontierOf(done = []) {
-  const set = new Set(done);
-  return RULES.find((r) => !set.has(r.id))?.id ?? MIXED;
-}
-
-/** done · in progress · locked. Which rule you are *looking at* is separate. */
-export function ruleState(id, done = []) {
-  if (done.includes(id)) return "done";
-  if (id === frontierOf(done)) return "active";
-  return "locked";
-}
+/* Named re-exports, because the page asks for the rule's state by name. The
+   definitions are the shared engine's. */
+export const frontierOf = syllabus.frontierOf;
+export const ruleState = syllabus.stateOf;
 
 /** Shuffle, but never repeat the previous prompt when there's an alternative. */
 function nextFrom(pool, lastId) {
@@ -58,20 +46,11 @@ function firstDifference(typed, expected) {
 export function useGuidedForms() {
   const saved = useRef(loadSlice(SLICE)).current;
 
-  const [progress, setProgress] = useState(() => {
-    const stored = saved?.progress;
-    if (!stored) return freshProgress();
-    const known = [...RULES.map((r) => r.id), MIXED];
-    return {
-      ruleId: known.includes(stored.ruleId) ? stored.ruleId : RULES[0].id,
-      streak: Number(stored.streak) || 0,
-      done: Array.isArray(stored.done) ? stored.done.filter((id) => known.includes(id)) : [],
-    };
-  });
+  const [progress, setProgress] = useState(() => syllabus.normalize(saved?.progress));
   const [showTranslit, setShowTranslit] = useState(() => saved?.showTranslit ?? false);
   const [prompt, setPrompt] = useState(null);
   const [value, setValue] = useState("");
-  const [result, setResult] = useState(null); // { correct, diagnosis, diffAt, justCompleted }
+  const [result, setResult] = useState(null); // { correct, diagnosis, diffAt, completed }
 
   const progressRef = useRef(progress);
   const lastIdRef = useRef(null);
@@ -85,13 +64,13 @@ export function useGuidedForms() {
   useEffect(() => { progressRef.current = progress; }, [progress]);
 
   const rule = useMemo(
-    () => RULES.find((r) => r.id === progress.ruleId) ?? null,
-    [progress.ruleId]
+    () => RULES.find((r) => r.id === progress.stepId) ?? null,
+    [progress.stepId]
   );
 
   const pool = useMemo(
-    () => (progress.ruleId === MIXED ? ALL_PROMPTS : promptsForRule(progress.ruleId)),
-    [progress.ruleId]
+    () => (progress.stepId === MIXED ? ALL_PROMPTS : promptsForRule(progress.stepId)),
+    [progress.stepId]
   );
 
   const deal = useCallback((fromPool) => {
@@ -141,23 +120,12 @@ export function useGuidedForms() {
        updater assigned would still be null by the time the result below is
        built — which is why the "rule finished" banner never appeared. */
     const p = progressRef.current;
-    const accrues = p.ruleId !== MIXED && p.ruleId === frontierOf(p.done);
-    const target = RULES.find((r) => r.id === p.ruleId)?.streak ?? 5;
-    const streak = correct ? p.streak + 1 : 0;
-    const completes = accrues && streak >= target;
-
-    if (accrues) {
-      let updated;
-      if (completes) {
-        const done = p.done.includes(p.ruleId) ? p.done : [...p.done, p.ruleId];
-        updated = { ruleId: frontierOf(done), streak: 0, done };
-      } else {
-        updated = { ...p, streak };
-      }
+    const { progress: nextProgress, completed } = syllabus.answer(p, correct);
+    if (nextProgress !== p) {
       /* Keep the ref in step immediately, so two submits in one frame can't
          both read the old streak and count as one. */
-      progressRef.current = updated;
-      setProgress(updated);
+      progressRef.current = nextProgress;
+      setProgress(nextProgress);
     }
 
     showResult({
@@ -166,7 +134,7 @@ export function useGuidedForms() {
       typed,
       diagnosis: signature ? ERRORS[signature.why] : null,
       diffAt: correct ? -1 : firstDifference(typed, prompt.answer),
-      justCompleted: completes ? p.ruleId : null,
+      completed,
     });
   }, [prompt, result, value, deal, showResult]);
 
@@ -174,10 +142,10 @@ export function useGuidedForms() {
     if (!prompt || result) return;
     lastIdRef.current = prompt.id;
     const p = progressRef.current;
-    if (p.ruleId !== MIXED && p.ruleId === frontierOf(p.done) && p.streak !== 0) {
-      const updated = { ...p, streak: 0 };
-      progressRef.current = updated;
-      setProgress(updated);
+    const broken = syllabus.breakStreak(p);
+    if (broken !== p) {
+      progressRef.current = broken;
+      setProgress(broken);
     }
     showResult({ correct: false, revealed: true, typed: "", diagnosis: null, diffAt: -1 });
   }, [prompt, result, showResult]);
@@ -205,9 +173,9 @@ export function useGuidedForms() {
      are already on used to reset it to zero. */
   const goToRule = useCallback((ruleId) => {
     const p = progressRef.current;
-    if (ruleState(ruleId, p.done) === "locked") return;
-    if (p.ruleId === ruleId) return;
-    const updated = { ...p, ruleId };
+    if (syllabus.stateOf(ruleId, p.done) === "locked") return;
+    if (p.stepId === ruleId) return;
+    const updated = { ...p, stepId: ruleId };
     progressRef.current = updated;
     setProgress(updated);
     lastIdRef.current = null;
@@ -216,11 +184,11 @@ export function useGuidedForms() {
 
   const resetAll = useCallback(() => {
     clearSlice(SLICE);
-    const fresh = freshProgress();
+    const fresh = syllabus.fresh();
     progressRef.current = fresh;
     setProgress(fresh);
     lastIdRef.current = null;
-    deal(promptsForRule(fresh.ruleId));
+    deal(promptsForRule(fresh.stepId));
   }, [deal]);
 
   /* Enter submits, then moves on. */
@@ -238,10 +206,10 @@ export function useGuidedForms() {
   return {
     prompt, rule, value, setValue, result, progress, showTranslit, setShowTranslit,
     inputRef, submit, reveal, next, insert, goToRule, resetAll,
-    isMixed: progress.ruleId === MIXED,
+    isMixed: progress.stepId === MIXED,
     target: rule?.streak ?? 0,
     frontier: frontierOf(progress.done),
     /* Revising something already finished: shown, but nothing accrues. */
-    revising: progress.ruleId !== frontierOf(progress.done),
+    revising: syllabus.isRevising(progress),
   };
 }

@@ -80,7 +80,7 @@ export const LESSONS = [
 /* The terminus, where the five mix. Not part of the syllabus proper — it has no
    streak to finish — but it is a row in the contents and a pool to draw from. */
 export const MIXED_REVIEW = {
-  id: "free", n: 6, group: null, seow: "§1",
+  id: "mixed", n: 6, group: null, seow: "§1",
   title: "Mixed Review",
   article: null,
   statement:

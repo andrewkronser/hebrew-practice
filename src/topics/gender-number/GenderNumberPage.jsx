@@ -7,7 +7,7 @@ import { loadSlice, saveSlice } from "../../shared/storage.js";
 const MODE_SLICE = "gender-number-mode";
 
 export default function GenderNumberPage() {
-  const [mode, setMode] = useState(() => loadSlice(MODE_SLICE)?.mode ?? "identify");
+  const [mode, setMode] = useState(() => loadSlice(MODE_SLICE)?.mode ?? "adaptive");
   const choose = (next) => { setMode(next); saveSlice(MODE_SLICE, { mode: next }); };
 
   const header = (
@@ -18,8 +18,8 @@ export default function GenderNumberPage() {
         value={mode}
         onChange={choose}
         data={[
-          { label: "Identify a form", value: "identify" },
-          { label: "Write the form", value: "form" },
+          { label: "Identify a form", value: "adaptive" },
+          { label: "Write the form", value: "guided" },
         ]}
         aria-label="Exercise"
       />
@@ -31,7 +31,7 @@ export default function GenderNumberPage() {
      mode control, not starting below them. So that mode takes the header into
      its own layout and places it in the reading column, rather than having it
      sit above the grid where the dividing rule would begin mid-page. */
-  if (mode === "form") return <GuidedForms header={header} />;
+  if (mode === "guided") return <GuidedForms header={header} />;
 
   return (
     <Stack gap="lg">

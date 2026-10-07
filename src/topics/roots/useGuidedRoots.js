@@ -13,7 +13,7 @@ import {
 import { isLetter } from "../../shared/hebrewLetters.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
-const SLICE = "root-rules";
+const SLICE = "roots-guided";
 const { MIXED } = syllabus;
 
 const EMPTY = ["", "", ""];

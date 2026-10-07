@@ -22,7 +22,7 @@ import { isLetter } from "../../shared/hebrewLetters.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 import { useTempo } from "../../shared/useTempo.js";
 
-const SLICE = "root-practice";
+const SLICE = "roots-adaptive";
 const EMPTY = ["", "", ""];
 
 const isDot = (ch) => ch === SHIN_DOT || ch === SIN_DOT;

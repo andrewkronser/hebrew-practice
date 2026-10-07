@@ -15,11 +15,10 @@
    step you are *looking at* and the step that is *in progress* are tracked
    separately. */
 
-/* The terminal step, where everything mixes. The value is still "free" because
-   it is written into saved progress as `stepId`; renaming it means migrating
-   what people already have, which rides along with the storage migration. The
-   name here is the one we actually use. */
-export const MIXED = "free";
+/* The terminal step, where everything mixes. Written into saved progress as
+   `stepId`, so storage.js carries the old "free" forward for anyone who was
+   sitting on it. */
+export const MIXED = "mixed";
 
 export function createGuided(steps) {
   const ids = steps.map((s) => s.id);

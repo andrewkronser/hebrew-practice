@@ -562,7 +562,7 @@ console.log("\n── roots: the word bank ──");
   check("finished lessons read done", syllabus.stateOf(ids[0], [ids[0]]), "done");
   check("the frontier reads active", syllabus.stateOf(ids[1], [ids[0]]), "active");
   check("later lessons read locked", syllabus.stateOf(ids[4], [ids[0]]), "locked");
-  check("past the end is free", syllabus.frontierOf(ids), "free");
+  check("past the end is Mixed Review", syllabus.frontierOf(ids), "mixed");
   /* A run only accrues on the frontier, and completing moves it on. */
   let p = syllabus.fresh();
   const target = LESSONS[0].streak;
@@ -827,11 +827,11 @@ console.log("\n── the definite article ──");
   const art = (w) => canonical(w.def).slice(0, 2);
   const body = (w) => canonical(w.def).slice(2);
 
-  check("five rules plus Free Practice", A_CONTENTS.length, 6);
+  check("five rules plus Mixed Review", A_CONTENTS.length, 6);
   check("the rules are numbered in order",
     A_CONTENTS.map((s) => s.n).join(""), "123456");
-  check("Free Practice is last and has no streak",
-    [A_CONTENTS.at(-1).id, "streak" in A_FREE], ["free", false]);
+  check("Mixed Review is last and has no streak",
+    [A_CONTENTS.at(-1).id, "streak" in A_FREE], ["mixed", false]);
   check("every rule cites Seow", A_LESSONS.every((l) => /^§1/.test(l.seow)), true);
   check("the decision table covers every rule",
     new Set(DECISION_TABLE.map((r) => r.rule)).size, 4);

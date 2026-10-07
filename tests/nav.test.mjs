@@ -42,6 +42,11 @@ const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:transliteration
 check("slice created", Boolean(slice), true);
 check("unlocked carried over", slice?.progress?.unlocked, 7);
 check("settings carried over", slice?.settings?.style, "seow");
+/* Two migrations in a row for anyone who has been here since before the slices
+   existed: the flat key becomes a slice, and then the track inside it is
+   renamed. Worth pinning, because the second only sees what the first left. */
+check("and the track rename applies to what the first migration produced",
+  slice?.settings?.track, "curriculum");
 check("tiles reflect migrated progress", doc.querySelectorAll(".tile:not(.tile-locked)").length, 7);
 
 console.log("\n── the exercise still works ──");

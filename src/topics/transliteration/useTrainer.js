@@ -20,7 +20,7 @@ import { useTempo } from "../../shared/useTempo.js";
 const SLICE = "transliteration";
 
 const DEFAULT_SETTINGS = {
-  track: "guided",
+  track: "curriculum",
   style: "everyday",
   strict: "forgiving",
   freeMode: "letters",
@@ -59,7 +59,11 @@ export function useTrainer() {
     setHinted(false);
     setHintText("");
 
-    if (settings.track === "free") {
+    /* `track` is not the guided/adaptive distinction. Transliteration is an
+       adaptive topic either way; this only chooses whether the unlock gate
+       applies. It used to be spelled "guided"/"free", which collided with both
+       halves of that vocabulary. */
+    if (settings.track === "everything") {
       if (!queueRef.current.length) queueRef.current = shuffled(freePool(settings.freeMode));
       setCard({ item: queueRef.current.shift(), isIntro: false });
     } else {
@@ -103,7 +107,9 @@ export function useTrainer() {
 
     if (!hinted) tempo.record(ms);
 
-    if (settings.track !== "guided") return;
+    /* Only the curriculum track moves the unlock gate — practising everything
+       is practice, not progress. */
+    if (settings.track !== "curriculum") return;
 
     setProgress((p) => {
       const stats = item.word
@@ -201,7 +207,7 @@ export function useTrainer() {
     inputRef,
     submit, reveal, showHint, insert, unlockNext, resetAll,
     changeTrack, changeFreeMode, changeStyle, changeStrict,
-    guided: settings.track === "guided",
+    unlocking: settings.track === "curriculum",
     seow: settings.style === "seow",
   };
 }

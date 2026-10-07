@@ -14,7 +14,7 @@ const MODE_SLICE = "roots-mode";
    rule reaches are only ever asked in the second. */
 
 export default function RootsPage() {
-  const [mode, setMode] = useState(() => loadSlice(MODE_SLICE)?.mode ?? "learn");
+  const [mode, setMode] = useState(() => loadSlice(MODE_SLICE)?.mode ?? "guided");
   const choose = (next) => { setMode(next); saveSlice(MODE_SLICE, { mode: next }); };
 
   const header = (
@@ -25,15 +25,15 @@ export default function RootsPage() {
         value={mode}
         onChange={choose}
         data={[
-          { label: "Learn root rules", value: "learn" },
-          { label: "Practice roots", value: "practice" },
+          { label: "Learn root rules", value: "guided" },
+          { label: "Practice roots", value: "adaptive" },
         ]}
         aria-label="Exercise"
       />
     </Stack>
   );
 
-  return mode === "learn"
-    ? <GuidedRoots header={header} onFinish={() => choose("practice")} />
+  return mode === "guided"
+    ? <GuidedRoots header={header} onFinish={() => choose("adaptive")} />
     : <AdaptiveRoots header={header} />;
 }

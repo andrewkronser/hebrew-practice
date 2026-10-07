@@ -12,6 +12,8 @@
    came back, including the one place the textbook and BDB part company.
    ========================================================================== */
 
+import { createGuided } from "../../shared/guided.js";
+
 /* Terms that get an inline tooltip. Deliberately short: these are read in
    passing, mid-rule, not studied. */
 export const GLOSSARY = {
@@ -244,7 +246,7 @@ export const RULES = [
 
 /* Free practice closes the lesson: every word, rules mixed, no completion. */
 export const MIXED_REVIEW = {
-  id: "free",
+  id: "mixed",
   n: 10,
   title: "Mixed Review",
   statement: "Every word, rules mixed. There is nothing left to complete — this is where the lesson ends up.",
@@ -255,6 +257,10 @@ export const ALL_PROMPTS = RULES.flatMap((rule) =>
 );
 
 export const ruleById = new Map(RULES.map((r) => [r.id, r]));
+
+/* The progression, from the shared engine — the same one the roots lessons and
+   the definite article run on. */
+export const syllabus = createGuided(RULES);
 
 /* The rules plus Mixed Review, as the contents lists them — the same shape the
    other guided topics expose, so they can share one contents component. */
