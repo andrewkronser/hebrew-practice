@@ -8,9 +8,9 @@ import {
 import { RootCells } from "./components/RootCells.jsx";
 import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
 import { Prose } from "../../shared/components/Prose.jsx";
+import { useOs } from "../../shared/settings.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { ROWS } from "../../shared/hebrewKeyboard.js";
-import { loadSlice } from "../../shared/storage.js";
 import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Layout follows "Write the form": the syllabus is a sticky column dressed as
@@ -30,7 +30,7 @@ const ROOT_CHARS = new Set([
 
 export default function GuidedRoots({ header = null, onFinish }) {
   const d = useGuidedRoots();
-  const os = loadSlice("typing")?.os === "win" ? "win" : "mac";
+  const os = useOs();
   if (!d.word && !d.isMixed) return null;
 
   const { word, lesson, result, progress } = d;

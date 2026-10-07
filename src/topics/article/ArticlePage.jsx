@@ -8,8 +8,8 @@ import {
 } from "./lessons.js";
 import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
 import { Prose } from "../../shared/components/Prose.jsx";
+import { useOs } from "../../shared/settings.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
-import { loadSlice } from "../../shared/storage.js";
 import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Same layout as the plural rules: the syllabus is a sticky column dressed as
@@ -21,7 +21,7 @@ import { Verdict } from "../../shared/components/Verdict.jsx";
 
 export default function ArticlePage() {
   const d = useArticle();
-  const os = loadSlice("typing")?.os === "win" ? "win" : "mac";
+  const os = useOs();
   if (!d.word) return null;
 
   const { word, lesson, result, progress } = d;

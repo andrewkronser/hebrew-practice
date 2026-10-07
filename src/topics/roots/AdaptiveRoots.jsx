@@ -6,9 +6,9 @@ import { lessonById, dotName, SHIN_DOT, SIN_DOT } from "./lessons.js";
 import { RootCells } from "./components/RootCells.jsx";
 import { ClassHealth } from "./components/ClassHealth.jsx";
 import { Prose } from "../../shared/components/Prose.jsx";
+import { useOs } from "../../shared/settings.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { ROWS } from "../../shared/hebrewKeyboard.js";
-import { loadSlice } from "../../shared/storage.js";
 import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Same layout as the lessons, with the syllabus swapped for the health
@@ -23,7 +23,7 @@ const ROOT_CHARS = new Set([
 
 export default function AdaptiveRoots({ header = null }) {
   const d = useAdaptiveRoots();
-  const os = loadSlice("typing")?.os === "win" ? "win" : "mac";
+  const os = useOs();
   if (!d.word) return null;
 
   const { word, result } = d;

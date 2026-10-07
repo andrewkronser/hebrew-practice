@@ -1,6 +1,7 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import Shell from "./Shell.jsx";
 import { SECTIONS } from "./routes.jsx";
+import { SettingsProvider } from "./shared/settings.jsx";
 
 /* HashRouter, not BrowserRouter, and that's a GitHub Pages decision rather than
    a preference.
@@ -20,15 +21,17 @@ import { SECTIONS } from "./routes.jsx";
 
 export default function App() {
   return (
-    <HashRouter>
-      <Routes>
-        <Route element={<Shell />}>
-          {SECTIONS.map(({ path, Component }) => (
-            <Route key={path} path={path} element={<Component />} />
-          ))}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
-    </HashRouter>
+    <SettingsProvider>
+      <HashRouter>
+        <Routes>
+          <Route element={<Shell />}>
+            {SECTIONS.map(({ path, Component }) => (
+              <Route key={path} path={path} element={<Component />} />
+            ))}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </SettingsProvider>
   );
 }

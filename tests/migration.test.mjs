@@ -37,6 +37,12 @@ const OLD = {
     settings: { track: "guided", style: "seow", strict: "forgiving", freeMode: "letters" },
     best: 12,
   },
+  [key("typing")]: {
+    progress: { unlocked: 6, stats: {}, since: 0 },
+    os: "win",
+    learned: { win: { "\u05B7": { cap: "p", shift: false } } },
+    best: 5,
+  },
   [key("gender-number-mode")]: { mode: "form" },
   [key("roots-mode")]: { mode: "learn" },
 };
@@ -78,6 +84,14 @@ const trans = slice("transliteration");
 check("the old 'guided' track becomes the curriculum one", trans.settings.track, "curriculum");
 check("its other settings are untouched", trans.settings.style, "seow");
 check("and so is the rotation", trans.progress.unlocked, 9);
+
+console.log("\n── keyboard platform becomes a setting ──");
+check("the platform moves out of the typing slice", slice("settings").os, "win");
+check("the old copy stays for a rollback", slice("typing").os, "win");
+/* `learned` is keyed by platform but is the trainer's own data, so it stays. */
+check("the confirmed keystrokes stay with the trainer",
+  Boolean(slice("typing").learned.win["\u05B7"]), true);
+check("and are not copied into settings", "learned" in slice("settings"), false);
 
 console.log("\n── the mode selector names the shape ──");
 check("gender and number was on the written exercise", slice("gender-number-mode").mode, "guided");

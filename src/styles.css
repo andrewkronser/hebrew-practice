@@ -405,3 +405,10 @@
 .health-mid   { background: var(--mantine-color-orange-5); }
 .health-warm  { background: var(--mantine-color-yellow-5); }
 .health-solid { background: var(--mantine-color-teal-6); }
+
+/* The header holds a burger, the wordmark, the platform control and the colour
+   toggle. Below about 420px that is one thing too many, and the wordmark is the
+   part that can lose half of itself and still read. */
+@media (max-width: 26em) {
+  .brand-sub { display: none; }
+}

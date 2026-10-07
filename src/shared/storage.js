@@ -115,6 +115,19 @@ export function migrateStorage() {
       }
     }
 
+    /* Keyboard platform used to live in the typing trainer's slice, back when
+       only that page drew a keyboard. Five topics draw one now, and the control
+       sits in the header, so it is a setting rather than typing's business.
+       `learned` stays where it is — which keys you have confirmed is typing's
+       own data, keyed by platform. */
+    const typing = localStorage.getItem(keyFor("typing"));
+    if (typing && !localStorage.getItem(keyFor("settings"))) {
+      const os = JSON.parse(typing)?.os;
+      if (os === "mac" || os === "win") {
+        localStorage.setItem(keyFor("settings"), JSON.stringify({ os }));
+      }
+    }
+
     for (const [name, values] of Object.entries(MODE_SLICES)) {
       const raw = localStorage.getItem(keyFor(name));
       if (!raw) continue;

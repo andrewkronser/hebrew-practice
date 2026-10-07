@@ -1,10 +1,11 @@
 import {
-  ActionIcon, AppShell, Box, Burger, Container, Group, NavLink, Text, Tooltip,
+  ActionIcon, AppShell, Box, Burger, Container, Group, NavLink, SegmentedControl, Text, Tooltip,
   useMantineColorScheme, useComputedColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { SECTIONS } from "./routes.jsx";
+import { useSettings } from "./shared/settings.jsx";
 
 /* Chrome around every page.
 
@@ -35,15 +36,20 @@ export default function Shell() {
 
           <Group gap={8} wrap="nowrap" component={Link} to="/" style={{ textDecoration: "none" }}>
             <Box className="hebrew" fz="xl" c="tekhelet" aria-hidden="true">א</Box>
-            <Text fw={600} c="var(--mantine-color-text)">
+            {/* The wordmark gives up its second half before it gives up its
+                line. With the platform control in the header too, "Hebrew
+                Practice" wrapped on a phone, which looks like a bug rather than
+                a tight fit; "א Hebrew" identifies the app on its own. */}
+            <Text fw={600} c="var(--mantine-color-text)" style={{ whiteSpace: "nowrap" }}>
               Hebrew{" "}
-              <Text span c="dimmed" fw={400} inherit>Practice</Text>
+              <Text span c="dimmed" fw={400} inherit className="brand-sub">Practice</Text>
             </Text>
           </Group>
 
-          <Box style={{ marginLeft: "auto" }}>
+          <Group gap="xs" wrap="nowrap" style={{ marginLeft: "auto" }}>
+            <PlatformToggle />
             <ColorSchemeToggle />
-          </Box>
+          </Group>
         </Group>
       </AppShell.Header>
 
@@ -66,6 +72,28 @@ export default function Shell() {
         </Container>
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+/* Which keyboard the key hints describe. It lives up here rather than on the
+   typing page because five of the six topics draw a keyboard, and because it is
+   a setting you want to be able to *check* at a glance — if it is wrong, every
+   hint in the app is wrong, and that reads as the lesson being confusing rather
+   than the setting being off. A segmented control states the answer without
+   being touched, which an icon toggle cannot.
+
+   Labelled, not iconographic: Mantine ships no icons, and a dependency for two
+   glyphs that would then need a tooltip to be legible is a poor trade. */
+function PlatformToggle() {
+  const { os, setOs } = useSettings();
+  return (
+    <SegmentedControl
+      size="xs"
+      value={os}
+      onChange={setOs}
+      data={[{ label: "macOS", value: "mac" }, { label: "Windows", value: "win" }]}
+      aria-label="Keyboard platform"
+    />
   );
 }
 

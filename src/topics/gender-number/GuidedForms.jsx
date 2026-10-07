@@ -6,6 +6,7 @@ import { useGuidedForms, ruleState } from "./useGuidedForms.js";
 import { CONTENTS, MIXED_REVIEW, GLOSSARY, REDUCTION_PREAMBLE, ruleById } from "./rules.js";
 import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
 import { Prose } from "../../shared/components/Prose.jsx";
+import { useOs } from "../../shared/settings.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { forgivenLabel, markedClusters } from "./forgive.js";
 import { Verdict } from "../../shared/components/Verdict.jsx";
@@ -28,7 +29,8 @@ import { Verdict } from "../../shared/components/Verdict.jsx";
    default. Expanding it does shift the page, but that is the reader's own
    doing rather than something that happens under their hands. */
 
-export default function GuidedForms({ os = "mac", header = null }) {
+export default function GuidedForms({ header = null }) {
+  const os = useOs();
   const d = useGuidedForms();
   const [showPreamble, setShowPreamble] = useState(false);
   if (!d.prompt) return null;

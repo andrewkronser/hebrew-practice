@@ -1,4 +1,4 @@
-import { Alert, Anchor, Box, Group, Kbd, Paper, SegmentedControl, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Box, Group, Kbd, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
 import { useTyping } from "./useTyping.js";
 import { hebrewToKey, niqqudHint } from "../../shared/hebrewKeyboard.js";
@@ -114,14 +114,10 @@ export default function TypingPage() {
 
       <StatsTape session={t.session} />
 
+      {/* Two parts now that the platform control has moved to the header: what
+          you have unlocked on the left, what you can do about it on the right.
+          The same shape as the transliteration grid's header row. */}
       <Group justify="space-between" align="center" gap="md">
-        <SegmentedControl
-          size="xs"
-          value={t.os}
-          onChange={t.setOs}
-          data={[{ label: "macOS", value: "mac" }, { label: "Windows", value: "win" }]}
-          aria-label="Keyboard platform"
-        />
         <Text size="sm" c="dimmed">
           <Text span fw={600} c="var(--mantine-color-text)">
             {unlocked} of {CURRICULUM.length}

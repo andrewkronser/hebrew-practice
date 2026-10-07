@@ -120,5 +120,33 @@ w.history.back();
 await settle(); await settle();
 check("back leaves the redirect target", typeof h1(), "string");
 
+console.log("\n── the platform control lives in the header ──");
+/* It governs five of the six topics' keyboards, so it belongs to the shell
+   rather than to the typing trainer that used to own it. */
+const seg = (label) => [...doc.querySelectorAll("label")].find((l) => l.textContent.trim() === label);
+check("macOS option present", Boolean(seg("macOS")), true);
+check("Windows option present", Boolean(seg("Windows")), true);
+check("it is on every topic, not just the ones with a keyboard",
+  (await goTo("Vocabulary"), Boolean(seg("macOS"))), true);
+
+const settings = () => JSON.parse(w.localStorage.getItem("hebrew-practice:settings") || "{}");
+const started = settings().os;
+check("the platform is stored as a setting", ["mac", "win"].includes(started), true);
+const other = started === "mac" ? "win" : "mac";
+[...doc.querySelectorAll("input[type=radio]")].find((r) => r.value === other)?.click();
+await settle();
+check("switching it writes through", settings().os, other);
+check("and not into the typing slice",
+  "os" in JSON.parse(w.localStorage.getItem("hebrew-practice:typing") || "{}"), false);
+
+/* The point of moving it: a topic that never owned the setting still follows
+   it, live, without being remounted. */
+await goTo("The Definite Article");
+const modifier = () => (rendered().includes("AltGr") ? "win" : rendered().includes("\u2325") ? "mac" : null);
+check("another topic's keyboard reads the setting", modifier(), other);
+[...doc.querySelectorAll("input[type=radio]")].find((r) => r.value === started)?.click();
+await settle();
+check("and follows it without navigating away", modifier(), started);
+
 /* One assertion for the run: the per-check detail is in the log above. */
 test("navigation and the storage migration", () => report(errs));

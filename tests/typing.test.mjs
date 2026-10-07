@@ -162,7 +162,8 @@ for (let i = 0; i < 80; i++) {
     type(g);
     await settle();
     const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:typing") || "null");
-    const forOs = slice?.learned?.[slice?.os] ?? {};
+    const platform = JSON.parse(w.localStorage.getItem("hebrew-practice:settings") || "{}").os;
+    const forOs = slice?.learned?.[platform] ?? {};
     learnedOk = forOs[pt]?.cap;
     break;
   }
@@ -172,21 +173,32 @@ check("a keystroke was recorded for a point", learnedOk, "`");
 await after(700);
 check("learned key is drawn as confirmed", doc.querySelectorAll(".kbd-niqqud.kbd-seen").length > 0, true);
 
-console.log("── platform toggle ──");
-const seg = (label) => [...doc.querySelectorAll("label")].find((l) => l.textContent.trim() === label);
-check("macOS option present", Boolean(seg("macOS")), true);
-check("Windows option present", Boolean(seg("Windows")), true);
-radio("win")?.click();
+console.log("── switching platform from the header ──");
+/* The control is the shell's now, so whether it exists and persists is tested
+   there. What belongs here is that this page answers to it — the modifier a
+   point needs is the visible difference, and it only appears once points are
+   unlocked, which by here they are.
+
+   Flipped relative to whatever we started on rather than to a fixed value:
+   jsdom's navigator reports a non-Mac platform, so detectOs lands on "win" and
+   clicking "win" would be a no-op that silently proves nothing. */
+const modifier = () => (rendered().includes("AltGr") ? "win" : rendered().includes("⌥") ? "mac" : null);
+const started = modifier();
+check("a modifier hint is shown at all", Boolean(started), true);
+const other = started === "mac" ? "win" : "mac";
+radio(other).click();
 await settle();
-check("switching platform keeps the exercise alive", Boolean(txt(".glyph")) || Boolean(txt(".glyph-word")), true);
-radio("mac")?.click();
+check("the modifier hint follows the platform", modifier(), other);
+check("and the exercise carries on", Boolean(txt(".glyph")) || Boolean(txt(".glyph-word")), true);
+radio(started).click();
 await settle();
+check("and switches back", modifier(), started);
 
 console.log("── persistence and isolation ──");
 const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:typing") || "null");
 check("typing slice saved", Boolean(slice), true);
 check("unlocked persisted", slice?.progress?.unlocked > 1, true);
-check("platform persisted", ["mac","win"].includes(slice?.os), true);
+check("the platform is no longer this topic\u2019s to store", "os" in (slice ?? {}), false);
 check("vocabulary slice independent", w.localStorage.getItem("hebrew-practice:vocabulary"), null);
 
 console.log("── the shin and sin dots ──");
@@ -212,7 +224,7 @@ const stepTo = async (dot) => {
 };
 
 const litFaces = () => [...doc.querySelectorAll(".kbd-active")].map((k) => k.textContent.trim());
-const os = () => JSON.parse(w.localStorage.getItem("hebrew-practice:typing") || "{}").os;
+const os = () => JSON.parse(w.localStorage.getItem("hebrew-practice:settings") || "{}").os;
 
 for (const [name, dot] of [["shin dot", SHIN_DOT], ["sin dot", SIN_DOT]]) {
   const reached = await stepTo(dot);

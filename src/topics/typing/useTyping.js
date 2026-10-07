@@ -7,18 +7,12 @@ import { emptyProgress, pickNext, gradeAttempt, shouldUnlock, canonicalLength } 
 import { scoreAnswer } from "../../shared/adaptive.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 import { useTempo } from "../../shared/useTempo.js";
+import { useSettings } from "../../shared/settings.jsx";
 
 const SLICE = "typing";
 const ADVANCE_MS = 550;   // pause on a correct answer before the next prompt
 
 const emptySession = (best = 0) => ({ right: 0, total: 0, streak: 0, best, tape: [] });
-
-/* Guess the platform once, for the key hints only — it never affects grading. */
-function detectOs() {
-  if (typeof navigator === "undefined") return "win";
-  const s = `${navigator.platform ?? ""} ${navigator.userAgent ?? ""}`;
-  return /Mac|iPhone|iPad/i.test(s) ? "mac" : "win";
-}
 
 export function useTyping() {
   const saved = useRef(loadSlice(SLICE)).current;
@@ -30,7 +24,11 @@ export function useTyping() {
   const [value, setValue] = useState("");
   const [result, setResult] = useState(null);   // { correct, marks }
   const [positionMode, setPositionMode] = useState(false);
-  const [os, setOs] = useState(() => saved?.os ?? detectOs());
+  /* The platform is a setting now, shared with the four other topics that draw
+     a keyboard and switched from the header. What stays here is `learned`,
+     which is keyed by it: the keystrokes you have confirmed are this trainer's
+     own data, recorded per platform. */
+  const { os } = useSettings();
   /* point character -> { cap, shift }, observed from real keystrokes. Published
      charts for this layer have been wrong twice, so what you actually press
      wins over what a table claims. Keyed by platform. */
@@ -66,8 +64,8 @@ export function useTyping() {
   useEffect(() => () => clearTimeout(advanceTimer.current), []);
 
   useEffect(() => {
-    saveSlice(SLICE, { progress, best: session.best, os, learned, tempo: tempo.tempo });
-  }, [progress, session.best, os, learned, tempo.tempo]);
+    saveSlice(SLICE, { progress, best: session.best, learned, tempo: tempo.tempo });
+  }, [progress, session.best, learned, tempo.tempo]);
 
   const settle = useCallback((correct, marks) => {
     const item = card.item;
@@ -180,7 +178,7 @@ export function useTyping() {
   }, [result, next]);
 
   return {
-    card, value, result, progress, session, positionMode, os, setOs,
+    card, value, result, progress, session, positionMode, os,
     learned: learned[os] ?? {}, noteKey,
     inputRef, change, next, unlockNext, resetAll,
   };
