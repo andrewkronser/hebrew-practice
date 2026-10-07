@@ -1,6 +1,6 @@
 /* Drives the Learn to Type page in the built bundle. */
 import { test } from "vitest";
-import TypingPage from "../src/features/typing/TypingPage.jsx";
+import TypingPage from "../src/topics/typing/TypingPage.jsx";
 import { mount, checker } from "./harness.mjs";
 import { NIQQUD } from "../src/shared/hebrewKeyboard.js";
 
@@ -135,7 +135,7 @@ check("points appear on their keys", doc.querySelectorAll(".kbd-niqqud").length 
 check("modifier named", /AltGr|⌥/.test(rendered()), true);
 check("unconfirmed points are marked", doc.querySelectorAll(".kbd-niqqud:not(.kbd-seen)").length > 0, true);
 
-/* Drill until a point comes up, then confirm the prompt is a real cluster. */
+/* Keep answering until a point comes up, then confirm the prompt is a real cluster. */
 let sawPoint = false, pointPrompt = null;
 for (let i = 0; i < 60; i++) {
   const g = txt(".glyph") ?? txt(".glyph-word");
@@ -148,7 +148,7 @@ check("a point was drilled on a cluster", sawPoint, true);
 check("cluster is letter + point, never a bare point", pointPrompt && /^[\u05D0-\u05EA][\u05B0-\u05C2]$/.test(pointPrompt), true);
 
 console.log("── the map learns from real keystrokes ──");
-/* Drill until a point prompt appears, then type it while reporting a physical
+/* Keep answering until a point prompt appears, then type it while reporting a physical
    key that disagrees with the published chart. The map should adopt ours. */
 let learnedOk = null;
 for (let i = 0; i < 80; i++) {
@@ -178,7 +178,7 @@ check("macOS option present", Boolean(seg("macOS")), true);
 check("Windows option present", Boolean(seg("Windows")), true);
 radio("win")?.click();
 await settle();
-check("switching platform keeps the drill alive", Boolean(txt(".glyph")) || Boolean(txt(".glyph-word")), true);
+check("switching platform keeps the exercise alive", Boolean(txt(".glyph")) || Boolean(txt(".glyph-word")), true);
 radio("mac")?.click();
 await settle();
 

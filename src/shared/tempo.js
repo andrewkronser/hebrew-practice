@@ -1,4 +1,4 @@
-/* How fast "fast" is, for this person on this drill.
+/* How fast "fast" is, for this person on this exercise.
 
    The confidence engine pays a correct answer at one of two rates: full credit
    when it came back quickly enough to count as recall, a smaller one when it
@@ -8,7 +8,7 @@
    80%, so the deliberate one paid nine repetitions per item where the other
    paid four. Identical knowledge, very different pacing.
 
-   So the bar is a quantile of your own times on that drill. Hold it at p and p
+   So the bar is a quantile of your own times on that exercise. Hold it at p and p
    of your answers are fast whoever you are, which puts the gain rate back under
    your control instead of your typing speed, while keeping the signal that
    actually matters: this answer was quick *for you*, so you knew it rather than

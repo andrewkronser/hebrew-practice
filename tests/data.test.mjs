@@ -1,35 +1,35 @@
 /* Guards the character data. The accent U+05AB once slipped into 20 vocabulary
    words and rendered as tofu, because Frank Ruhl Libre has no glyph for it. */
 import { test } from "vitest";
-import { WORD_BANK } from "../src/features/vocabulary/data.js";
+import { WORD_BANK } from "../src/topics/vocabulary/data.js";
 import {
   glossOrder, buildQuestion, buildReverseQuestion, advanceCursor, normalizeGloss,
   promptableGlosses, answerWeight, buildFor, OPTION_COUNT, PRIMARY_SHARE, SECONDARY_WEIGHT,
-} from "../src/features/vocabulary/quiz.js";
-import { createProgression, scoreAnswer as sharedScore } from "../src/shared/progression.js";
-import { FORMS, CELLS, SEED_SIZE, isCorrectCell } from "../src/features/gender-number/data.js";
-import { pickForm, correctCells, engine, PACING } from "../src/features/gender-number/drill.js";
-import { RULES, ALL_PROMPTS, GLOSSARY, ERRORS, REDUCTION_PREAMBLE } from "../src/features/gender-number/rules.js";
-import { canonical } from "../src/features/typing/typing.js";
-import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "../src/features/transliteration/data.js";
+} from "../src/topics/vocabulary/quiz.js";
+import { createAdaptive, scoreAnswer as sharedScore } from "../src/shared/adaptive.js";
+import { FORMS, CELLS, SEED_SIZE, isCorrectCell } from "../src/topics/gender-number/data.js";
+import { pickForm, correctCells, engine, PACING } from "../src/topics/gender-number/adaptive.js";
+import { RULES, ALL_PROMPTS, GLOSSARY, ERRORS, REDUCTION_PREAMBLE } from "../src/topics/gender-number/rules.js";
+import { canonical } from "../src/topics/typing/typing.js";
+import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "../src/topics/transliteration/data.js";
 import { NIQQUD, LETTER_KEYS, carrierFor, composedLetter } from "../src/shared/hebrewKeyboard.js";
-import { forgive, forgivenLabel, markedClusters } from "../src/features/gender-number/forgive.js";
+import { forgive, forgivenLabel, markedClusters } from "../src/topics/gender-number/forgive.js";
 import {
   freshTempo, normalizeTempo, observeTempo, fastBar,
   FAST_SHARE, FLOOR_MS, CEILING_MS, SEED_MS, WARMUP,
 } from "../src/shared/tempo.js";
-import { DEFAULT_PACING, scoreAnswer } from "../src/shared/progression.js";
+import { DEFAULT_PACING, scoreAnswer } from "../src/shared/adaptive.js";
 import {
   LESSONS as A_LESSONS, ALL_WORDS as A_WORDS, CONTENTS as A_CONTENTS,
-  DECISION_TABLE, FREE_PRACTICE as A_FREE, definiteOf, judgeArticle,
+  DECISION_TABLE, MIXED_REVIEW as A_FREE, definiteOf, judgeArticle,
   diagnose as diagnoseArticle, wordsForLesson as articleWords,
-} from "../src/features/article/lessons.js";
+} from "../src/topics/article/lessons.js";
 import {
   LESSONS, ALL_WORDS, wordsForLesson, markedWord, sameRoot, diagnose, syllabus,
   judgeRoot, dotInWord, dotName, affixSpans, annotatedWord, bareRoot,
   EXCEPTIONS, PRACTICE_WORDS, CLASSES,
-} from "../src/features/roots/lessons.js";
-import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "../src/features/typing/typing.js";
+} from "../src/topics/roots/lessons.js";
+import { CLUSTERS_BY_POINT, clustersFor, promptFor, CURRICULUM, typableWords, POINTED_WORDS, gradeAttempt } from "../src/topics/typing/typing.js";
 
 /* These simulations model a learner answering thousands of questions, and two
    of the checks compare one run against another. With Math.random that is a
@@ -85,7 +85,7 @@ check("transliteration words", unsafeIn(T_WORDS).join(",") || "clean", "clean");
 check("niqqud table", unsafeIn(NIQQUD).join(",") || "clean", "clean");
 check("keyboard letters", unsafeIn(LETTER_KEYS).join(",") || "clean", "clean");
 
-console.log("── niqqud drills use attested clusters ──");
+console.log("── niqqud exercises use attested clusters ──");
 const orphans = NIQQUD.filter((n) => !(CLUSTERS_BY_POINT.get(n.he) ?? []).length).map((n) => n.name);
 check("every point has at least one cluster", orphans.join(",") || "none", "none");
 /* Comparing the prompt string can't detect the ב fallback: בָ is itself a real
@@ -182,7 +182,7 @@ check("primary questions weigh full",
 
 console.log("── multi-sense words no longer dominate ──");
 /* Steady state on a fixed pool, so the only variable is the word itself. */
-const steadyEngine = createProgression({ items: WORD_BANK, pacing: { startUnlocked: 40 } });
+const steadyEngine = createAdaptive({ items: WORD_BANK, pacing: { startUnlocked: 40 } });
 function inflation(weighted) {
   const POOL = 40;
   let p = { unlocked: POOL, stats: {}, since: 0 }, cursors = {}, last = null;
@@ -213,8 +213,8 @@ check("weighting reduces it", weighted < unweighted, true);
 check("multi-sense words stay within 1.35x of single-sense", weighted < 1.35, true);
 
 console.log("── the unlock step is earned ──");
-const accel = createProgression({ items: WORD_BANK, pacing: { startUnlocked: 4, maxStep: 4 } });
-const plain = createProgression({ items: WORD_BANK, pacing: { startUnlocked: 4 } });
+const accel = createAdaptive({ items: WORD_BANK, pacing: { startUnlocked: 4, maxStep: 4 } });
+const plain = createAdaptive({ items: WORD_BANK, pacing: { startUnlocked: 4 } });
 const pristine = Object.fromEntries(WORD_BANK.map((w) => [w.id, { s: 0.95, a: 5 }]));
 check("default pacing never steps by more than one",
   plain.stepFor({ unlocked: 20, stats: pristine }), 1);

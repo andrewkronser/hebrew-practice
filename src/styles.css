@@ -29,7 +29,7 @@
   font-family: var(--translit-font);
   /* Matched to the root cells. The prompt above runs to 4.1rem, and an answer
      at 1.5rem was small enough to be hard to proof-read — which matters most
-     in the pointed drills, where a misplaced vowel is the thing being checked.
+     in the pointed exercises, where a misplaced vowel is the thing being checked.
      The line-height is tightened so the extra size costs little page height. */
   font-size: 2.2rem;
   line-height: 1.3;
@@ -266,7 +266,7 @@
   cursor: help;
 }
 
-/* Plural drill: reserved heights, so nothing above the keyboard moves.
+/* Guided forms: reserved heights, so nothing above the keyboard moves.
    The rule statement runs one to three lines and the card's lower half swaps
    buttons for the reveal; both would otherwise shift the keyboard mid-answer. */
 /* No reserved height. The rule statement only changes when you deliberately
@@ -274,7 +274,7 @@
    45px of page on seven of the nine — height that pushed the keyboard off a
    laptop screen to prevent a shift the reader asked for. What must not move is
    the keyboard while you answer, and that is the card footer's job below. */
-.drill-footer {
+.answer-footer {
   width: 100%;
   /* Reserved so answering doesn't move the keyboard. Sized from the measured
      distribution of every reveal in the bank — 86px×82, 109px×32, 126px×3,
@@ -328,7 +328,7 @@
   .aside-col { border-inline-start: 0; }
   .toc-sticky { position: static; max-height: none; overflow: visible; }
   .rule-panel { min-height: 0; }
-  .drill-footer { min-height: 0; }
+  .answer-footer { min-height: 0; }
 }
 
 /* The cluster a forgiven answer missed — bold enough to find at a glance in a

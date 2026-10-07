@@ -9,7 +9,7 @@ import {
 
    `target`        the string being typed; its keys are highlighted. Leave it
                    out where the answer is what's being tested — in the plural
-                   drill, lighting up the keys would hand over the vowels.
+                   exercise, lighting up the keys would hand over the vowels.
    `unlockedChars` dims letters not yet learned. Omit it and everything shows,
                    which is what a module without its own progression wants.
    `onType`        makes the keys clickable, each sending its character to the

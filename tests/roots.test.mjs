@@ -2,10 +2,10 @@
 import {
   LESSONS, CLASSES, wordsForLesson, ALL_WORDS, PRACTICE_WORDS, affixSpans, markedWord, annotatedWord, bareRoot,
   dotInWord, SHIN_DOT, SIN_DOT,
-} from "../src/features/roots/lessons.js";
+} from "../src/topics/roots/lessons.js";
 
 import { test } from "vitest";
-import RootsPage from "../src/features/roots/RootsPage.jsx";
+import RootsPage from "../src/topics/roots/RootsPage.jsx";
 import { mount, checker } from "./harness.mjs";
 
 /* This file remounts partway through, so the helpers delegate to whichever
@@ -58,7 +58,7 @@ const answerWith = async (root) => {
 };
 const rootFor = (he, lessonId) => wordsForLesson(lessonId).find((x) => x.he === he)?.root;
 /* Lesson-agnostic: pinning the lookup to one lesson failed about one run in
-   three, because by then the drill may have moved to the next lesson and the
+   three, because by then the exercise may have moved to the next lesson and the
    word was simply not in the list being searched. */
 const rootOf = (he) => ALL_WORDS.find((x) => x.he === he)?.root;
 
@@ -69,7 +69,7 @@ const rootOf = (he) => ALL_WORDS.find((x) => x.he === he)?.root;
    a broken export before the slower DOM walk does. */
 check("the roots page module loads", typeof RootsPage, "function");
 
-console.log("── reaching the drill ──");
+console.log("── reaching the exercise ──");
 await goTo("Roots");
 check("page heading", txt("h1"), "Roots");
 check("both modes offered", /Learn root rules/.test(rendered()) && /Practice roots/.test(rendered()), true);
@@ -308,7 +308,7 @@ console.log("\n── practice: every class mixed ──");
 const practice = [...doc().querySelectorAll("label")].find((l) => l.textContent.includes("Practice roots"));
 click(practice);
 await after(200);
-check("the practice drill renders", cells().length, 3);
+check("the adaptive exercise renders", cells().length, 3);
 check("nothing is announced", rendered().includes("nothing announced"), true);
 /* The lessons announce the class and offer hints; here spotting it is the task. */
 check("no syllabus", tocRows().length, 0);

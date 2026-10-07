@@ -5,7 +5,7 @@ import { freshTempo, normalizeTempo, observeTempo, fastBar } from "./tempo.js";
    See tempo.js for why it is a quantile of your own times rather than a
    constant, and why one number is enough.
 
-   Each drill keeps its own: typing a transliterated letter, reading a pointed
+   Each exercise keeps its own: typing a transliterated letter, reading a pointed
    word and picking among four glosses, and working three radicals out of a noun
    have very different floors just to read the prompt, and one bar across all of
    them measures the prompt rather than the learner.

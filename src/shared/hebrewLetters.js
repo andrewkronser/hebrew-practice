@@ -1,7 +1,7 @@
-/* Facts about Hebrew letters that more than one drill needs.
+/* Facts about Hebrew letters that more than one exercise needs.
 
    Kept apart from hebrewKeyboard.js, which is about where letters sit on a
-   keyboard, and from the feature modules, which are about what each drill does
+   keyboard, and from the feature modules, which are about what each exercise does
    with them. */
 
 /** The five letters that change shape at the end of a word, and their pairs. */

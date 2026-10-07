@@ -1,4 +1,4 @@
-/* Drives the built bundle in jsdom: navigation, the drill, and the storage
+/* Drives the built bundle in jsdom: navigation, the exercise, and the storage
    migration. Run with: node test-nav.mjs  (after building dist-test) */
 import { test } from "vitest";
 import { SECTIONS } from "../src/routes.jsx";
@@ -44,7 +44,7 @@ check("unlocked carried over", slice?.progress?.unlocked, 7);
 check("settings carried over", slice?.settings?.style, "seow");
 check("tiles reflect migrated progress", doc.querySelectorAll(".tile:not(.tile-locked)").length, 7);
 
-console.log("\n── the drill still works ──");
+console.log("\n── the exercise still works ──");
 let input = answerInput();
 check("answer field present", Boolean(input), true);
 setVal(input, "zzz");
@@ -62,7 +62,7 @@ await goTo("Roots");
 check("Roots heading", h1(), "Roots");
 check("Roots hash", w.location.hash, "#/roots");
 check("roots drill renders", doc.querySelectorAll(".root-cell").length, 3);
-check("transliteration drill gone from DOM", answerInput(), null);
+check("transliteration exercise gone from DOM", answerInput(), null);
 
 // The Enter handler is registered on document by useTrainer. If it leaked, it
 // would still be dealing cards on a page that has no cards.
@@ -79,7 +79,7 @@ check("hash slug", w.location.hash, "#/gender-and-number");
 await goTo("Vocabulary");
 check("Vocabulary heading", h1(), "Vocabulary");
 
-console.log("\n── back to the drill ──");
+console.log("\n── back to the exercise ──");
 await goTo("Transliteration");
 check("returns to Transliteration", h1(), "Transliteration");
 input = answerInput();
@@ -91,7 +91,7 @@ await settle();
 check("drill works after remount", Boolean(doc.querySelector(".reveal-name")), true);
 
 console.log("\n── per-section container width ──");
-/* Gender and Number carries a syllabus beside the drill and opts into a wider
+/* Gender and Number carries a syllabus beside the exercise and opts into a wider
    container; everything else keeps the narrow reading width. */
 const containerWidth = () => {
   const el = doc.querySelector("[class*=mantine-Container-root]");

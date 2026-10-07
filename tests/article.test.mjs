@@ -7,10 +7,10 @@
    the DOM while rendering at display:none), and that progress survives a
    reload. */
 
-import { ALL_WORDS, LESSONS, wordsForLesson } from "../src/features/article/lessons.js";
+import { ALL_WORDS, LESSONS, wordsForLesson } from "../src/topics/article/lessons.js";
 
 import { test } from "vitest";
-import ArticlePage from "../src/features/article/ArticlePage.jsx";
+import ArticlePage from "../src/topics/article/ArticlePage.jsx";
 import { mount, checker } from "./harness.mjs";
 
 /* This file remounts partway through — the persistence check is a second
@@ -70,7 +70,7 @@ await goTo("The Definite Article");
 check("page heading", txt("h1"), "The Definite Article");
 check("typing field present", Boolean(field()), true);
 check("starts on rule 1", panel().includes("1. The ordinary article"), true);
-check("the contents lists five rules and Free Practice", tocRows().length, 6);
+check("the contents lists five rules and Mixed Review", tocRows().length, 6);
 check("five of them start locked",
   tocRows().filter((r) => r.getAttribute("data-state") === "locked").length, 5);
 check("the prompt is a word from rule 1",
@@ -102,7 +102,7 @@ await settle();
 
 console.log("\n── the dagesh is graded strictly ──");
 /* It is the only thing separating rule 1 from rule 3, so dropping it is wrong
-   here even though the plural drill forgives the same slip. */
+   here even though the guided forms exercise forgives the same slip. */
 const dotted = currentWord();
 setVal(field(), dotted.def.replace("ּ", ""));
 enter(field());
@@ -168,7 +168,7 @@ click(tocRows()[1]);
 await settle();
 check("and the run is still there on rule 2", panel().includes("in a row"), true);
 
-console.log("\n── the exceptions, and Free Practice ──");
+console.log("\n── the exceptions, and Mixed Review ──");
 check("rule 4 explains the stress condition",
   (await walkTo("4. Before a qamats guttural")) && /stressed/.test(panel()), true);
 check("rule 5 is the seven that reshape the noun",
@@ -181,7 +181,7 @@ await settle();
 check("a reshaped noun says what stretched", rendered().includes(reshaped.was), true);
 click(btn("Next"));
 await settle();
-check("Free Practice opens at the end", await walkTo("6. Free Practice"), true);
+check("Mixed Review opens at the end", await walkTo("6. Mixed Review"), true);
 /* Deal thirty words and see which rules they came from. Four of the five is
    the bar rather than all five: §1.c is seven words out of forty-nine, so
    insisting on it would make this fail now and then for no reason. */
@@ -203,7 +203,7 @@ check("so is the table setting", "showTable" in saved(), true);
    where it was, not that an empty profile starts at the beginning. */
 h = await mount({ "hebrew-practice:definite-article": stored });
 await goTo("The Definite Article");
-check("a reload resumes where it left off", panel().includes("6. Free Practice"), true);
+check("a reload resumes where it left off", panel().includes("6. Mixed Review"), true);
 check("with the finished rules still finished",
   tocRows().slice(0, 5).every((r) => r.getAttribute("data-state") === "done"), true);
 check("and nothing locked any more",

@@ -1,6 +1,6 @@
 /* Drives the vocabulary trainer in the built bundle. Run via: npm run test:vocab */
 import { test } from "vitest";
-import VocabularyPage from "../src/features/vocabulary/VocabularyPage.jsx";
+import VocabularyPage from "../src/topics/vocabulary/VocabularyPage.jsx";
 import { mount, checker } from "./harness.mjs";
 
 const { w, doc, errs, settle, after, rendered, txt, btn, link, click, setVal , goTo} = await mount();
@@ -139,7 +139,7 @@ click(cells()[0]);
 await settle();
 check("clicking again switches it back on", doc.querySelectorAll(".bank-cell.bank-off").length, 0);
 
-/* Switch every unlocked word off: the drill should say so rather than break. */
+/* Switch every unlocked word off: the exercise should say so rather than break. */
 for (const c of cells()) { click(c); await settle(); }
 await settle();
 check("all off shows a message", rendered().includes("Every unlocked word is switched off"), true);
@@ -148,7 +148,7 @@ const restore = [...doc.querySelectorAll("button")].find((b) => b.textContent.tr
 check("restore control offered", Boolean(restore), true);
 click(restore);
 await settle();
-check("restoring brings the drill back", optionButtons().length, 4);
+check("restoring brings the exercise back", optionButtons().length, 4);
 check("nothing left greyed", doc.querySelectorAll(".bank-cell.bank-off").length, 0);
 
 console.log("\n── the reverse direction ──");
@@ -191,7 +191,7 @@ check("forward scores untouched by reverse answers",
 
 dirRadio("he-en").click();
 await settle();
-check("switching back restores the forward drill", Boolean(txt(".glyph-word")), true);
+check("switching back restores the forward exercise", Boolean(txt(".glyph-word")), true);
 
 console.log("\n── persistence ──");
 const slice = JSON.parse(w.localStorage.getItem("hebrew-practice:vocabulary") || "null");

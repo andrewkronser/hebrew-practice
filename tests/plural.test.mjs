@@ -1,8 +1,8 @@
 /* Drives the "Write the form" mode in the built bundle. */
-import { RULES, ALL_PROMPTS } from "../src/features/gender-number/rules.js";
+import { RULES, ALL_PROMPTS } from "../src/topics/gender-number/rules.js";
 
 import { test } from "vitest";
-import PluralDrill from "../src/features/gender-number/PluralDrill.jsx";
+import GuidedForms from "../src/topics/gender-number/GuidedForms.jsx";
 import { mount, checker } from "./harness.mjs";
 
 /* This file remounts partway through, so the helpers delegate to whichever
@@ -49,7 +49,7 @@ const answerCorrectly = async () => {
    without this `--changed` selects nothing when a component changes and
    reports green having run no tests. Asserting the module loads also catches
    a broken export before the slower DOM walk does. */
-check("the write-the-form module loads", typeof PluralDrill, "function");
+check("the write-the-form module loads", typeof GuidedForms, "function");
 
 console.log("── reaching the mode ──");
 await goTo("Gender and Number");
@@ -79,7 +79,7 @@ check("Hebrew inside a statement is isolated",
 click(btn("Show answer"));
 await settle();
 {
-  const node = [...doc().querySelectorAll(".drill-footer *")]
+  const node = [...doc().querySelectorAll(".answer-footer *")]
     .find((n) => !n.children.length && n.textContent.trim() === "Answer");
   check("a revealed answer reads as an answer", Boolean(node), true);
   check("and is toned gray, not red",
@@ -292,10 +292,10 @@ console.log("\n── reserved heights keep the keyboard still ──");
    a deliberate pick from the syllabus, and reserving for the tallest rule cost
    enough page height to push the keyboard off a laptop screen. */
 check("rule panel present", doc().querySelectorAll(".rule-panel").length, 1);
-check("card footer has a reserved block", doc().querySelectorAll(".drill-footer").length, 1);
+check("card footer has a reserved block", doc().querySelectorAll(".answer-footer").length, 1);
 /* The keyboard must sit outside the column whose contents change. */
 const kbd = doc().querySelector(".kbd-key");
-const footer = doc().querySelector(".drill-footer");
+const footer = doc().querySelector(".answer-footer");
 check("keyboard is not inside the swapping region", footer.contains(kbd), false);
 
 console.log("\n── the syllabus reads as an aside ──");

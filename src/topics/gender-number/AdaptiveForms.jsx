@@ -1,0 +1,163 @@
+/* The adaptive half of Gender and Number: pick the cells that describe the form
+   you are shown. Every form stays in rotation and the engine leans on whichever
+   you are weakest at — the sibling of GuidedForms, which walks the rules in
+   order instead.
+
+   This lived inside GenderNumberPage, which made the topic's two shapes look
+   like different kinds of thing: one a component, one a function in the shell.
+   They are siblings. */
+
+import {
+  Anchor, Box, Button, Divider, Group, Paper, SimpleGrid, Stack, Switch, Text,
+} from "@mantine/core";
+import { useAdaptiveForms } from "./useAdaptiveForms.js";
+import { FORMS, CELLS, GENDERS, NUMBERS } from "./data.js";
+import { correctCells, gateLabel } from "./adaptive.js";
+import { StatsTape } from "../../shared/components/StatsTape.jsx";
+import { Verdict } from "../../shared/components/Verdict.jsx";
+
+export default function AdaptiveForms() {
+  const g = useAdaptiveForms();
+  if (!g.card) return null;
+
+  const { unlocked } = g.progress;
+  const gate = gateLabel(g.progress);
+
+  return (
+    <Stack gap="lg">
+      <Group justify="flex-end" align="center">
+        <Switch
+          size="sm"
+          label="Transliteration hint"
+          checked={g.showTranslit}
+          onChange={(e) => g.setShowTranslit(e.currentTarget.checked)}
+        />
+      </Group>
+
+      <Paper withBorder radius="lg" p="xl" shadow="sm">
+        <Question
+          form={g.card.form}
+          result={g.result}
+          showTranslit={g.showTranslit}
+          onAnswer={g.answer}
+          onNext={g.next}
+        />
+      </Paper>
+
+      <StatsTape session={g.session} />
+
+      <Group justify="space-between" align="baseline" gap="md">
+        <Text size="sm" c="dimmed">
+          <Text span fw={600} c="var(--mantine-color-text)">
+            {unlocked} of {FORMS.length}
+          </Text>{" "}
+          forms in rotation{gate ? ` · ${gate}` : ""}
+        </Text>
+        <Group gap="md">
+          {unlocked < FORMS.length && (
+            <Anchor component="button" type="button" size="sm" c="dimmed" onClick={g.unlockNext}>
+              Unlock the next one
+            </Anchor>
+          )}
+          <Anchor component="button" type="button" size="sm" c="dimmed" onClick={g.resetAll}>
+            Start over
+          </Anchor>
+        </Group>
+      </Group>
+
+      <Text size="xs" c="dimmed" lh={1.6}>
+        Press 1–6 to answer, Enter to move on. New forms arrive unannounced and the
+        reveal teaches them. Duals come up far more often here than their share of the
+        vocabulary, since only seven forms in the whole bank take one. A few words are
+        attested in both genders — either column counts.
+      </Text>
+    </Stack>
+  );
+}
+
+function Parse({ form }) {
+  const cells = correctCells(form);
+  const gender = [...new Set(cells.map((c) => c.gender))]
+    .map((id) => GENDERS.find((x) => x.id === id).label.toLowerCase())
+    .join(" or ");
+  const number = NUMBERS.find((n) => n.id === form.number).label.toLowerCase();
+  return <>{gender} {number}</>;
+}
+
+function Question({ form, result, showTranslit, onAnswer, onNext }) {
+  const right = result ? correctCells(form).map((c) => c.id) : [];
+
+  return (
+    <Stack gap="md" align="center">
+      <Stack gap={2} align="center">
+        <Box className="hebrew glyph-word" dir="rtl">{form.he}</Box>
+        {/* Held either way, so flipping the hint doesn't shift the grid. */}
+        <Text className="translit" c="dimmed" fz="lg" mih="1.6em">
+          {showTranslit ? form.tr : " "}
+        </Text>
+      </Stack>
+
+      <Stack gap={6} w="100%" maw={420}>
+        <SimpleGrid cols={2} spacing="xs">
+          {GENDERS.map((gender) => (
+            <Text key={gender.id} size="xs" c="dimmed" ta="center" tt="uppercase"
+                  style={{ letterSpacing: "0.06em" }}>
+              {gender.label}
+            </Text>
+          ))}
+        </SimpleGrid>
+
+        <SimpleGrid cols={2} spacing="xs" verticalSpacing="xs">
+          {CELLS.map((cell, i) => {
+            const chosen = result?.chosen?.id === cell.id;
+            const isRight = right.includes(cell.id);
+            let color = "gray";
+            let variant = "default";
+            if (result) {
+              if (isRight) { color = "teal"; variant = "light"; }
+              else if (chosen) { color = "red"; variant = "light"; }
+            }
+            const numberLabel = NUMBERS.find((n) => n.id === cell.number).label;
+            const genderLabel = GENDERS.find((x) => x.id === cell.gender).label;
+            return (
+              <Button
+                key={cell.id}
+                variant={variant}
+                color={color}
+                size="md"
+                justify="flex-start"
+                onClick={() => onAnswer(cell)}
+                disabled={Boolean(result) && !isRight && !chosen}
+                aria-label={`${genderLabel} ${numberLabel}`}
+                leftSection={<Text size="xs" c="dimmed" w={14} ta="center">{i + 1}</Text>}
+              >
+                {numberLabel}
+              </Button>
+            );
+          })}
+        </SimpleGrid>
+      </Stack>
+
+      {result && (
+        <>
+          <Divider w="100%" opacity={0.4} />
+          <Stack gap={6} align="center">
+            <Verdict result={result} />
+            <Text size="sm" ta="center">
+              <Box component="span" className="hebrew" fz="lg">{form.he}</Box>
+              {" "}
+              <Text span className="translit" c="dimmed">{form.tr}</Text>
+              {" — "}
+              <Text span fw={600}><Parse form={form} /></Text>
+              {", "}{form.gloss}
+            </Text>
+            {form.note && (
+              <Text size="xs" c="dimmed" ta="center" maw={440}>{form.note}</Text>
+            )}
+            <Button mt="xs" onClick={onNext}>Next</Button>
+          </Stack>
+        </>
+      )}
+    </Stack>
+  );
+}

@@ -1,6 +1,6 @@
-/* Drives the Gender and Number drill in the built bundle. */
+/* Drives the Gender and Number exercise in the built bundle. */
 import { test } from "vitest";
-import GenderNumberPage from "../src/features/gender-number/GenderNumberPage.jsx";
+import GenderNumberPage from "../src/topics/gender-number/GenderNumberPage.jsx";
 import { mount, checker } from "./harness.mjs";
 
 const { w, doc, errs, settle, after, rendered, txt, btn, link, click , goTo} = await mount();
