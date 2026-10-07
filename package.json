@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node test-data.mjs && vite build --config vite.test.config.js && node test-nav.mjs && node test-vocab.mjs && node test-typing.mjs && node test-gender.mjs && node test-plural.mjs && node test-article.mjs && node test-roots.mjs"
+    "test": "vitest run",
+    "test:changed": "vitest run --changed",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@mantine/core": "^9.6.1",
@@ -19,7 +21,8 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^29.1.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^5.0.3"
   },
   "engines": {
     "node": ">=18.0.0"

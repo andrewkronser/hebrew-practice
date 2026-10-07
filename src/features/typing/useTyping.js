@@ -163,14 +163,21 @@ export function useTyping() {
     deal(fresh);
   }, [deal]);
 
-  /* After a miss, Enter moves on. */
+  /* Enter moves on. After a miss there is nothing else to wait for; after a
+     correct answer it skips the confirmation pause, which a fluent typist
+     doing a long run has no reason to sit through — every other mode advances
+     on Enter, and this one used to be the exception.
+
+     `next`, not `deal`: a correct answer has an auto-advance already scheduled,
+     so dealing directly would leave that timer to fire a moment later and skip
+     the prompt it had just dealt. */
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Enter" && result && !result.correct) { e.preventDefault(); deal(); }
+      if (e.key === "Enter" && result) { e.preventDefault(); next(); }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [result, deal]);
+  }, [result, next]);
 
   return {
     card, value, result, progress, session, positionMode, os, setOs,
