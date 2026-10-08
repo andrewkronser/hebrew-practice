@@ -3,12 +3,12 @@ import {
   Anchor, Badge, Box, Button, Divider, Grid, Group, Paper, Stack, Text, TextInput,
 } from "@mantine/core";
 import { useGuidedForms, ruleState } from "./useGuidedForms.js";
-import { CONTENTS, MIXED_REVIEW, GLOSSARY, REDUCTION_PREAMBLE, ruleById } from "./rules.js";
+import { CONTENTS, MIXED_REVIEW, GLOSSARY, REDUCTION_PREAMBLE, ruleById, syllabus } from "./rules.js";
 import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
 import { Prose } from "../../shared/components/Prose.jsx";
 import { useOs } from "../../shared/settings.jsx";
 import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
-import { forgivenLabel, markedClusters } from "./forgive.js";
+import { forgivenLabel, markedClusters } from "../../shared/forgive.js";
 import { Verdict } from "../../shared/components/Verdict.jsx";
 
 /* Layout note: the syllabus column is styled to read as an aside — a pinned,
@@ -178,6 +178,7 @@ export default function GuidedForms({ header = null }) {
             steps={CONTENTS}
             progress={progress}
             stateOf={ruleState}
+            canOpen={syllabus.canOpen}
             onSelect={d.goToRule}
           />
           <Group justify="flex-end" mt="xs">

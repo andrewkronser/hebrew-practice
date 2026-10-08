@@ -1,3 +1,5 @@
+import { allStepsReachable } from "./dev.js";
+
 /* A guided exercise: an ordered syllabus with a streak per step.
 
    One of the app's two progression shapes. The other, in adaptive.js, keeps a
@@ -75,8 +77,13 @@ export function createGuided(steps) {
 
   const isRevising = (p) => p.stepId !== frontierOf(p.done);
 
+  /* Whether a step can be opened, which is not quite the same as whether it is
+     unlocked: in a dev server every step can be opened while still *reading* as
+     locked, so the contents show a learner's view and you can still jump. */
+  const canOpen = (id, done = []) => allStepsReachable() || stateOf(id, done) !== "locked";
+
   return {
     steps, ids, MIXED,
-    fresh, normalize, frontierOf, stateOf, targetOf, answer, breakStreak, isRevising,
+    fresh, normalize, frontierOf, stateOf, canOpen, targetOf, answer, breakStreak, isRevising,
   };
 }

@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RULES, ALL_PROMPTS, promptsForRule, ERRORS, syllabus } from "./rules.js";
 import { canonical } from "../typing/typing.js";
-import { forgive } from "./forgive.js";
+import { forgive } from "../../shared/forgive.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
 const SLICE = "gender-number-guided";
@@ -173,7 +173,7 @@ export function useGuidedForms() {
      are already on used to reset it to zero. */
   const goToRule = useCallback((ruleId) => {
     const p = progressRef.current;
-    if (syllabus.stateOf(ruleId, p.done) === "locked") return;
+    if (!syllabus.canOpen(ruleId, p.done)) return;
     if (p.stepId === ruleId) return;
     const updated = { ...p, stepId: ruleId };
     progressRef.current = updated;

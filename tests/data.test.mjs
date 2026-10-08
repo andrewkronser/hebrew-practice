@@ -13,12 +13,22 @@ import { RULES, ALL_PROMPTS, GLOSSARY, ERRORS, REDUCTION_PREAMBLE } from "../src
 import { canonical } from "../src/topics/typing/typing.js";
 import { CURRICULUM as T_CURRICULUM, WORDS as T_WORDS } from "../src/topics/transliteration/data.js";
 import { NIQQUD, LETTER_KEYS, carrierFor, composedLetter } from "../src/shared/hebrewKeyboard.js";
-import { forgive, forgivenLabel, markedClusters } from "../src/topics/gender-number/forgive.js";
+import { forgive, forgivenLabel, markedClusters } from "../src/shared/forgive.js";
 import {
   freshTempo, normalizeTempo, observeTempo, fastBar,
   FAST_SHARE, FLOOR_MS, CEILING_MS, SEED_MS, WARMUP,
 } from "../src/shared/tempo.js";
 import { DEFAULT_PACING, scoreAnswer } from "../src/shared/adaptive.js";
+import {
+  ADJECTIVES, USABLE_NOUNS, agreeingForm, formKeyFor, definiteNoun, CITED, COLLECTIVE_NOTE,
+} from "../src/topics/adjectives/data.js";
+import {
+  LESSONS as ADJ_LESSONS, CONTENTS as ADJ_CONTENTS, ALL_PROMPTS as ADJ_PROMPTS,
+  syllabus as ADJ_SYLLABUS,
+  promptsForLesson as adjPrompts,
+} from "../src/topics/adjectives/lessons.js";
+import { judgeAdjective, diagnose as diagnoseAdjective } from "../src/topics/adjectives/judge.js";
+import { PHRASES, CLASSES as READING_CLASSES } from "../src/topics/adjectives/reading.js";
 import {
   LESSONS as A_LESSONS, ALL_WORDS as A_WORDS, CONTENTS as A_CONTENTS,
   DECISION_TABLE, MIXED_REVIEW as A_FREE, definiteOf, judgeArticle,
@@ -939,6 +949,142 @@ console.log("\n── the definite article ──");
     definiteOf("חֹדֶשׁ", "virtual").includes(DAGESH), false);
   check("a word that already has a dagesh gains no second one",
     (definiteOf("בַּיִת", "plain").match(/ּ/g) || []).length, 1);
+}
+
+console.log("\n── adjectives ──");
+{
+  const noun = (he) => USABLE_NOUNS.find((f) => f.he === canonical(he));
+  const adj = (id) => ADJECTIVES.find((a) => a.id === id);
+  const form = (he, id, use, def) => canonical(agreeingForm(noun(he), adj(id), use, def));
+  const eq = (a, b) => canonical(a) === canonical(b);
+
+  /* Seow prints eighteen forms across VII.3–4. Reproducing them is the whole
+     claim this topic makes, so they are asserted rather than trusted — and the
+     five that carry verse references were checked against the text, not copied
+     off the page. */
+  console.log("   §3.a attributive");
+  for (const [he, definite, want] of [
+    ["אִישׁ", false, "טוֹב"], ["אִישׁ", true, "הַטּוֹב"],
+    ["אִשָּׁה", false, "טוֹבָה"], ["אִשָּׁה", true, "הַטּוֹבָה"],
+    ["אֲנָשִׁים", false, "טוֹבִים"], ["אֲנָשִׁים", true, "הַטּוֹבִים"],
+    ["נָשִׁים", false, "טוֹבוֹת"], ["נָשִׁים", true, "הַטּוֹבוֹת"],
+  ]) {
+    check(`${he}${definite ? " (definite)" : ""} takes ${want}`,
+      form(he, "tov", "attributive", definite), canonical(want));
+  }
+
+  console.log("   §3.b predicate never takes the article");
+  check("masculine", form("אִישׁ", "tov", "predicate", true), canonical("טוֹב"));
+  check("feminine", form("אִשָּׁה", "tov", "predicate", true), canonical("טוֹבָה"));
+  check("and the definiteness of the noun does not change it",
+    form("אִישׁ", "tov", "predicate", true), form("אִישׁ", "tov", "predicate", false));
+
+  console.log("   §3.c substantive, through the article topic's rule 4");
+  check("חָכָם becomes הֶחָכָם", definiteNoun(adj("chakham").ms), canonical("הֶחָכָם"));
+
+  console.log("   §4 agreement, against the cited text");
+  check("Deut 1:35 — the good land",
+    form("אֶרֶץ", "tov", "attributive", true), canonical("הַטּוֹבָה"));
+  check("and the noun reshapes with it", definiteNoun("אֶרֶץ"), canonical("הָאָרֶץ"));
+  check("1 Kgs 4:13 — great cities, feminine despite the ending",
+    form("עָרִים", "gadol", "attributive", false), canonical("גְּדֹלוֹת"));
+  check("Isa 35:3 — a dual noun takes a plural adjective",
+    form("יָדַיִם", "rafeh", "attributive", false), canonical("רָפוֹת"));
+  check("Isa 19:4 — plural in form, one master",
+    canonical(agreeingForm({ ...noun("אֲדוֹנִים"), number: "singular" }, adj("qasheh"), "attributive", false)),
+    canonical("קָשֶׁה"));
+  check("all four citations carry their reference", CITED.every((c) => /\d/.test(c.ref)), true);
+  check("the collective rule is kept as a note, not a question",
+    COLLECTIVE_NOTE.he, canonical("צֹאן רַבּוֹת"));
+
+  console.log("   the bank");
+  check("no geminate roots among the adjectives",
+    ADJECTIVES.some((a) => ["rav", "ra", "dal", "az", "mar"].includes(a.id)), false);
+  check("every adjective has four forms",
+    ADJECTIVES.every((a) => [a.ms, a.fs, a.mp, a.fp].every(Boolean)), true);
+  check("every adjective records which article rule it takes",
+    ADJECTIVES.every((a) => ["plain", "lengthen", "virtual", "segol"].includes(a.article)), true);
+  check("nouns attested as both genders are not asked about",
+    USABLE_NOUNS.every((f) => f.genders.length === 1), true);
+
+  console.log("   which form a noun calls for");
+  check("dual takes the plural, not a dual", formKeyFor(noun("יָדַיִם")), "fp");
+  check("masculine plural", formKeyFor(noun("אֲנָשִׁים")), "mp");
+  check("feminine singular", formKeyFor(noun("אִשָּׁה")), "fs");
+
+  console.log("   locking");
+  /* `canOpen` is the dev convenience: in a dev server every step opens, so
+     changing step six does not cost twenty right answers first.
+
+     What this file can check is the opt-out, not the production behaviour.
+     Vitest imports source through Vite, so `import.meta.env.DEV` is true here
+     exactly as it is in a dev server — these tests are not a build. The
+     guarantee that a real build keeps its locks is asserted where it can be:
+     in the DOM tests, which drive the built bundle. */
+  {
+    const done = ["after"];
+    check("a later step reads locked",
+      ADJ_LESSONS.some((l) => ADJ_SYLLABUS.stateOf(l.id, done) === "locked"), true);
+
+    const realStorage = globalThis.localStorage;
+    globalThis.localStorage = { getItem: (k) => (k === "hebrew-practice:locks" ? "on" : null) };
+    check("forcing locks on restores the real behaviour",
+      ADJ_LESSONS.every((l) =>
+        ADJ_SYLLABUS.canOpen(l.id, done) === (ADJ_SYLLABUS.stateOf(l.id, done) !== "locked")),
+      true);
+    globalThis.localStorage = { getItem: () => null };
+    check("and without it every step opens",
+      ADJ_LESSONS.every((l) => ADJ_SYLLABUS.canOpen(l.id, done)), true);
+    if (realStorage === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = realStorage;
+  }
+
+  console.log("   the syllabus");
+  check("six steps plus Mixed Review", ADJ_CONTENTS.length, 7);
+  check("numbered in order", ADJ_CONTENTS.map((s) => s.n).join(""), "1234567");
+  check("every step cites Seow", ADJ_LESSONS.every((l) => /^§[34]/.test(l.seow)), true);
+  check("every step has prompts", ADJ_LESSONS.every((l) => adjPrompts(l.id).length >= 6), true);
+  check("every prompt's answer agrees with its own noun",
+    ADJ_PROMPTS.every((p) => {
+      const shaped = p.single ? { ...p.noun, number: "singular" } : p.noun;
+      return eq(p.answer, agreeingForm(shaped, p.adjective, p.use, p.definite));
+    }), true);
+  check("a predicate prompt never wants an article",
+    ADJ_PROMPTS.filter((p) => p.use === "predicate").every((p) => !/^ה[ֶַָ]/.test(canonical(p.answer))),
+    true);
+  check("each step opens on the phrase its statement shows",
+    adjPrompts("after")[0].gloss, "a good man");
+
+  console.log("   marking");
+  const good = ADJ_PROMPTS.find((p) => p.lesson === "article" && p.noun.he === canonical("אִישׁ"));
+  check("the right form passes", Boolean(judgeAdjective(good.answer, good)), true);
+  check("a dropped dagesh is forgiven",
+    judgeAdjective(canonical(good.answer).replace("ּ", ""), good)?.forgiven?.kinds?.[0], "dagesh");
+  check("the wrong definiteness is not",
+    judgeAdjective(canonical("טוֹב"), good), null);
+  check("and is told the rule",
+    /agrees in definiteness/.test(diagnoseAdjective(canonical("טוֹב"), good) ?? ""), true);
+  const pred = ADJ_PROMPTS.find((p) => p.use === "predicate");
+  check("an article on a predicate is told the other half",
+    /never takes the article/.test(diagnoseAdjective(canonical(`הַ${canonical(pred.answer)}`), pred) ?? ""), true);
+
+  console.log("   reading");
+  check("four readings offered", READING_CLASSES.length, 4);
+  check("every phrase has one of them as its answer",
+    PHRASES.every((p) => READING_CLASSES.some((c) => c.id === p.answer)), true);
+  check("no two phrases look the same",
+    PHRASES.length - new Set(PHRASES.map((p) => p.he)).size, 0);
+  /* Three of the five phrase shapes are unambiguously predicate, so generated
+     evenly the right answer would be "predicate" half the time. */
+  const tally = {};
+  for (const p of PHRASES) tally[p.answer] = (tally[p.answer] ?? 0) + 1;
+  const commonest = Math.max(...Object.values(tally)) / PHRASES.length;
+  console.log(`   guessing the commonest answer would score ${(commonest * 100).toFixed(0)}%`);
+  check("no answer is worth guessing", commonest < 0.35, true);
+  check("the ambiguous phrases really are ambiguous — indefinite, adjective second",
+    PHRASES.filter((p) => p.answer === "either")
+      .every((p) => p.shape === "indefinite-ambiguous"), true);
+  check("every phrase says why", PHRASES.every((p) => p.why && p.gloss), true);
 }
 
 test("the character and lesson data", () => {

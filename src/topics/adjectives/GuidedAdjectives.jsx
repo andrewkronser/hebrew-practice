@@ -1,38 +1,34 @@
 import {
-  Anchor, Badge, Box, Button, Divider, Grid, Group, Paper, Stack, Switch,
-  Table, Text, TextInput, Title,
+  Anchor, Badge, Box, Button, Divider, Grid, Group, Paper, Stack, Text, TextInput,
 } from "@mantine/core";
-import { useArticle } from "./useArticle.js";
-import {
-  CONTENTS, DECISION_TABLE, MIXED_REVIEW, lessonById, syllabus,
-} from "./lessons.js";
+import { useGuidedAdjectives } from "./useGuidedAdjectives.js";
+import { CONTENTS, MIXED_REVIEW, lessonById, syllabus } from "./lessons.js";
+import { COLLECTIVE_NOTE } from "./data.js";
 import { GuidedContents, StreakMeter } from "../../shared/components/GuidedContents.jsx";
 import { Prose } from "../../shared/components/Prose.jsx";
-import { useOs } from "../../shared/settings.jsx";
-import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
 import { Verdict } from "../../shared/components/Verdict.jsx";
+import { KeyboardMap } from "../../shared/components/KeyboardMap.jsx";
+import { useOs } from "../../shared/settings.jsx";
+import { forgivenLabel, markedClusters } from "../../shared/forgive.js";
 
-/* Same layout as the plural rules: the syllabus is a sticky column dressed as
-   an aside, and the page header sits inside the reading column so the dividing
-   rule runs its full height.
+const GLOSSARY = {
+  attributive: "Describing which noun is meant — \"the good man\". It follows the noun in Hebrew and agrees with it in gender, number and definiteness.",
+  predicate: "Saying what the noun is — \"the man is good\". It agrees in gender and number but never takes the article, and may stand before or after the noun.",
+  dual: "The form for a natural pair — two hands, two eyes. Nouns have one; adjectives do not.",
+  collective: "One word naming many of a thing: צֹאן, a flock.",
+};
 
-   The keyboard carries no `target` — lighting up the keys would hand over the
-   article, which is the entire question. */
+/* The keyboard carries no `target`: lighting up the keys would hand over the
+   form, which is the question. */
 
-export default function ArticlePage() {
-  const d = useArticle();
+export default function GuidedAdjectives({ header = null }) {
+  const d = useGuidedAdjectives();
   const os = useOs();
-  if (!d.word) return null;
+  if (!d.prompt) return null;
 
-  const { word, lesson, result, progress } = d;
+  const { prompt, lesson, result, progress } = d;
   const step = lesson ?? MIXED_REVIEW;
   const frontierLesson = lessonById.get(d.frontier) ?? null;
-
-  const header = (
-    <Stack gap="sm">
-      <Title order={1} size="h2">The Definite Article</Title>
-    </Stack>
-  );
 
   return (
     <Grid gutter="lg">
@@ -40,23 +36,14 @@ export default function ArticlePage() {
         <Stack gap="sm">
           {header}
 
-          {/* Shares the guided forms panel's class for the small-screen
-              rules. The panel is deliberately not height-reserved: these
-              statements run one to four lines, and reserving for the tallest
-              cost enough page to push the keyboard off a laptop screen. */}
           <Paper withBorder radius="md" p="md" className="rule-panel">
             <Stack gap={6}>
               <Group gap="xs" align="baseline" justify="space-between" wrap="nowrap">
-                <Group gap="sm" align="baseline" wrap="nowrap">
-                  <Text fw={600} size="sm">{step.n}. {step.title}</Text>
-                  {step.article && (
-                    <Box className="hebrew" fz={20} dir="rtl">{step.article}</Box>
-                  )}
-                </Group>
+                <Text fw={600} size="sm">{step.n}. {step.title}</Text>
                 <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>Seow {step.seow}</Text>
               </Group>
 
-              <Prose size="sm">{step.statement}</Prose>
+              <Prose size="sm" terms={GLOSSARY}>{step.statement}</Prose>
 
               {!d.isMixed && !d.revising && (
                 <StreakMeter streak={progress.streak} target={d.target} />
@@ -73,15 +60,27 @@ export default function ArticlePage() {
             </Stack>
           </Paper>
 
-
           <Paper withBorder radius="lg" p="md" shadow="sm">
             <Stack gap={8} align="center">
               <Text size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: "0.06em" }}>
-                Add the article
+                Write the adjective
               </Text>
 
-              <Box className="hebrew glyph-word" dir="rtl">{word.he}</Box>
-              <Text size="sm" c="dimmed">{word.gloss}</Text>
+              {/* The noun in its lexical form and the English you are aiming at.
+                  The article on the noun is deliberately not shown — knowing it
+                  would be there is half of what the step asks.
+
+                  The row runs right to left, so the noun sits on the right and
+                  the adjective to its left: the same order the finished phrase
+                  has, read the same way. Laid out left to right it said
+                  "adjective, then noun" to anyone reading it as Hebrew, which
+                  is backwards from what an attributive adjective does. */}
+              <Group gap="md" align="baseline" wrap="nowrap" style={{ direction: "rtl" }}>
+                <Box className="hebrew glyph-word" dir="rtl">{prompt.noun.he}</Box>
+                <Text size="sm" c="dimmed">+</Text>
+                <Box className="hebrew" fz={28} dir="rtl">{prompt.adjective.ms}</Box>
+              </Group>
+              <Text size="sm" c="dimmed">{prompt.gloss}</Text>
 
               <TextInput
                 ref={d.inputRef}
@@ -98,13 +97,13 @@ export default function ArticlePage() {
                 autoCapitalize="off"
                 autoCorrect="off"
                 spellCheck={false}
-                aria-label="Definite form"
+                aria-label="Adjective"
                 classNames={{ input: "hebrew answer-input" }}
               />
 
               <Box className="answer-footer">
                 {result
-                  ? <Reveal word={word} result={result} onNext={d.next} />
+                  ? <Reveal prompt={prompt} result={result} onNext={d.next} />
                   : (
                     <Group gap="sm" justify="center">
                       <Button onClick={d.submit}>Check</Button>
@@ -121,46 +120,20 @@ export default function ArticlePage() {
             <KeyboardMap os={os} onType={d.insert} />
           </Box>
 
-          {/* Below the keyboard, not above it: the table is reference material
-              you consult while answering, so switching it on must not move the
-              keys you are typing with. Above the card it pushed the keyboard
-              clean off a 13" screen.
-
-              Rendered conditionally rather than with a Collapse — Mantine's
-              left it at display:none here, so the content sat in the DOM
-              unseen, which also quietly passed any test that only checked it
-              was present. */}
-          {d.showTable && (
+          {/* §4.c, which is read rather than written — see data.js. */}
+          {(step.id === "dual" || step.id === "single") && (
             <Paper withBorder radius="md" p="md" bg="var(--mantine-color-tekhelet-light)">
-              <Table verticalSpacing={4} horizontalSpacing="md" fz="xs">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>First letter</Table.Th>
-                    <Table.Th>Its vowel</Table.Th>
-                    <Table.Th>Article</Table.Th>
-                    <Table.Th>Dagesh</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {DECISION_TABLE.map((row, i) => (
-                    <Table.Tr key={i}>
-                      <Table.Td><Box component="span" className="hebrew" dir="rtl">{row.letter}</Box></Table.Td>
-                      <Table.Td>{row.vowel}</Table.Td>
-                      {/* Larger than the rest of the row: this column is the
-                          answer, and patah, qamats and segol are three small
-                          marks that are easy to confuse at body size. */}
-                      <Table.Td><Box component="span" className="hebrew" fz={22} dir="rtl">{row.article}</Box></Table.Td>
-                      <Table.Td>{row.dagesh ? "yes" : "no"}</Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
+              <Stack gap={4}>
+                <Prose size="xs" terms={GLOSSARY}>{COLLECTIVE_NOTE.statement}</Prose>
+                <Text size="xs" c="dimmed">{COLLECTIVE_NOTE.ref}</Text>
+              </Stack>
             </Paper>
           )}
 
           <Text size="xs" c="dimmed" lh={1.6}>
-            Type the whole definite form, fully pointed. The dagesh is graded strictly here —
-            it is the only thing separating rule 1 from rule 3.
+            Type the adjective only, fully pointed — the noun is given. Enter checks, Enter
+            again moves on. A dropped dagesh or a letter in the wrong shape is forgiven and
+            shown; a wrong form is not.
           </Text>
         </Stack>
       </Grid.Col>
@@ -175,14 +148,6 @@ export default function ArticlePage() {
             onSelect={d.goToLesson}
             labelOf={(s) => `${s.n}. ${s.title}`}
           />
-          <Box pl="md" pt="xs">
-            <Switch
-              size="xs"
-              label="Show the table"
-              checked={d.showTable}
-              onChange={(e) => d.setShowTable(e.currentTarget.checked)}
-            />
-          </Box>
           <Group justify="flex-end" mt="xs">
             <Anchor component="button" type="button" size="xs" c="dimmed" onClick={d.resetAll}>
               Start over
@@ -194,7 +159,7 @@ export default function ArticlePage() {
   );
 }
 
-function Reveal({ word, result, onNext }) {
+function Reveal({ prompt, result, onNext }) {
   const completed = result.completed ? lessonById.get(result.completed) : null;
 
   return (
@@ -204,25 +169,30 @@ function Reveal({ word, result, onNext }) {
       <Group gap="sm" align="baseline" wrap="nowrap">
         <Verdict result={result} />
         {(!result.correct || result.forgiven) && (
-          <Box className="hebrew" fz={24} dir="rtl">{word.def}</Box>
+          <Box className="hebrew" fz={24} dir="rtl">
+            {result.forgiven
+              ? <Marked answer={prompt.answer} at={result.forgiven.at} />
+              : prompt.answer}
+          </Box>
         )}
+      </Group>
+
+      {/* The whole phrase, which is where the noun's own article turns up. A
+          learner who wrote the adjective right but was unsure the noun took one
+          finds out here. */}
+      <Group gap="sm" align="baseline" wrap="nowrap">
+        <Box className="hebrew" fz={22} dir="rtl">{prompt.phrase}</Box>
+        <Text size="xs" c="dimmed">{prompt.gloss}</Text>
       </Group>
 
       {result.forgiven && (
         <Text size="xs" c="dimmed" ta="center" maw={520}>
-          Counted as correct — but a letter is in the wrong shape for its position.
+          Counted as correct — but {forgivenLabel(result.forgiven.kinds)}.
         </Text>
       )}
 
       {result.diagnosis && (
         <Text size="sm" c="red.7" ta="center" maw={520}>{result.diagnosis}</Text>
-      )}
-
-      {word.note && (
-        <Prose size="xs" c="dimmed" ta="center" maw={520}>{word.note}</Prose>
-      )}
-      {word.was && (
-        <Text size="xs" c="dimmed" ta="center" maw={520}>{word.was}</Text>
       )}
 
       {completed && (
@@ -233,5 +203,20 @@ function Reveal({ word, result, onNext }) {
 
       <Button size="xs" variant="light" onClick={onNext} mt={2}>Next</Button>
     </Stack>
+  );
+}
+
+/* The expected form with the missed cluster bolded. The whole cluster is
+   wrapped, not the bare mark: a combining character split into its own element
+   has no base to sit on and renders as a stray dot. */
+function Marked({ answer, at }) {
+  return (
+    <>
+      {markedClusters(answer, at).map((c, i) =>
+        c.flagged
+          ? <Box component="span" key={i} className="slip-mark">{c.text}</Box>
+          : <Box component="span" key={i}>{c.text}</Box>
+      )}
+    </>
   );
 }

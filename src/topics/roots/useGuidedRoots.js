@@ -211,7 +211,7 @@ export function useGuidedRoots() {
 
   const goToLesson = useCallback((stepId) => {
     const p = progressRef.current;
-    if (syllabus.stateOf(stepId, p.done) === "locked") return;
+    if (!syllabus.canOpen(stepId, p.done)) return;
     if (p.stepId === stepId) return;
     const updated = { ...p, stepId };   // the streak belongs to the frontier
     progressRef.current = updated;

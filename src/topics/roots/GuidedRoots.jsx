@@ -154,6 +154,7 @@ export default function GuidedRoots({ header = null, onFinish }) {
             steps={LESSONS}
             progress={progress}
             stateOf={syllabus.stateOf}
+            canOpen={syllabus.canOpen}
             onSelect={d.goToLesson}
             labelOf={(s) => `${s.n}. ${s.title}`}
           />

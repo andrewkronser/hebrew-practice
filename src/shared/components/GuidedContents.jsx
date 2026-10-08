@@ -12,7 +12,7 @@ import { Box, Group, Stack, Text, UnstyledButton } from "@mantine/core";
 
 const MARK = { done: "✓", active: "▸", locked: "·" };
 
-export function GuidedContents({ steps, progress, stateOf, onSelect, labelOf }) {
+export function GuidedContents({ steps, progress, stateOf, canOpen, onSelect, labelOf }) {
   const rows = [];
   let lastGroup = null;
   for (const step of steps) {
@@ -39,11 +39,14 @@ export function GuidedContents({ steps, progress, stateOf, onSelect, labelOf }) 
           const state = stateOf(step.id, progress.done);
           const viewing = progress.stepId === step.id;
           const locked = state === "locked";
+          /* How it looks and whether it opens are separate: a dev server lets
+             you into a step that still draws as locked. */
+          const openable = canOpen ? canOpen(step.id, progress.done) : !locked;
           return (
             <UnstyledButton
               key={row.key}
-              onClick={() => !locked && onSelect(step.id)}
-              disabled={locked}
+              onClick={() => openable && onSelect(step.id)}
+              disabled={!openable}
               className={`toc-row${viewing ? " toc-viewing" : ""}${locked ? " toc-locked" : ""}`}
               style={{ paddingInlineStart: step.group ? 14 : 4 }}
               aria-current={viewing ? "step" : undefined}

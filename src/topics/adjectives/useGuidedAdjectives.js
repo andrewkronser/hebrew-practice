@@ -1,40 +1,41 @@
-/* Working through the definite-article syllabus.
+/* Working through the adjective syllabus.
 
-   Same shape as the plural rules: a locked sequence with a streak per rule,
-   ending in Mixed Review where everything mixes. The progression itself lives
-   in shared/guided.js; this holds the drill. */
+   The same shape as the definite article's: a locked sequence with a streak per
+   step, the progression itself in shared/guided.js, and only the exercise here.
+
+   One thing is particular to this topic. You are shown the noun in its lexical
+   form and asked for the adjective alone, so you have to know the noun would
+   take the article without being shown it taking one. The reveal prints the
+   whole phrase, which is where that lands. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  LESSONS, syllabus, lessonById, wordsForLesson, ALL_WORDS, judgeArticle, diagnose,
-} from "./lessons.js";
+import { syllabus, lessonById, promptsForLesson, ALL_PROMPTS } from "./lessons.js";
+import { judgeAdjective, diagnose } from "./judge.js";
 import { canonical } from "../typing/typing.js";
 import { loadSlice, saveSlice, clearSlice } from "../../shared/storage.js";
 
-const SLICE = "definite-article";
+const SLICE = "adjectives-guided";
 const { MIXED } = syllabus;
 
-/** Shuffle, but never repeat the previous word when there's an alternative. */
+/** Shuffle, but never repeat the previous prompt when there is an alternative.
+ *
+ *  The first question of a step is the pool's head rather than a random one,
+ *  because the head is the phrase the step's own statement just showed you.
+ *  Opening a lesson on "the good man" and then being asked about מָקוֹם makes
+ *  the statement look like decoration. */
 function nextFrom(pool, lastId) {
   if (!pool.length) return null;
+  if (lastId === null) return pool[0];
   if (pool.length === 1) return pool[0];
-  const choices = pool.filter((w) => w.id !== lastId);
+  const choices = pool.filter((p) => p.id !== lastId);
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
-/** Where the two forms first differ, comparing canonically. */
-function firstDifference(typed, expected) {
-  const a = [...canonical(typed)], b = [...canonical(expected)];
-  for (let i = 0; i < Math.max(a.length, b.length); i++) if (a[i] !== b[i]) return i;
-  return -1;
-}
-
-export function useArticle() {
+export function useGuidedAdjectives() {
   const saved = useRef(loadSlice(SLICE)).current;
 
   const [progress, setProgress] = useState(() => syllabus.normalize(saved?.progress));
-  const [showTable, setShowTable] = useState(() => saved?.showTable ?? false);
-  const [word, setWord] = useState(null);
+  const [prompt, setPrompt] = useState(null);
   const [value, setValue] = useState("");
   const [result, setResult] = useState(null);
 
@@ -48,7 +49,7 @@ export function useArticle() {
 
   const lesson = useMemo(() => lessonById.get(progress.stepId) ?? null, [progress.stepId]);
   const pool = useMemo(
-    () => (progress.stepId === MIXED ? ALL_WORDS : wordsForLesson(progress.stepId)),
+    () => (progress.stepId === MIXED ? ALL_PROMPTS : promptsForLesson(progress.stepId)),
     [progress.stepId]
   );
 
@@ -56,27 +57,27 @@ export function useArticle() {
     resultRef.current = null;
     setResult(null);
     setValue("");
-    setWord(nextFrom(fromPool ?? pool, lastIdRef.current));
+    setPrompt(nextFrom(fromPool ?? pool, lastIdRef.current));
   }, [pool]);
 
   useEffect(() => {
-    /* Don't wipe a verdict that's on screen — finishing a rule changes the pool
-       in the same commit as the result announcing it. */
+    /* Don't wipe a verdict that is on screen — finishing a step changes the
+       pool in the same commit as the result announcing it. */
     if (resultRef.current) return;
     deal();
   }, [deal]);
 
-  useEffect(() => { saveSlice(SLICE, { progress, showTable }); }, [progress, showTable]);
-  useEffect(() => { inputRef.current?.focus(); }, [word]);
+  useEffect(() => { saveSlice(SLICE, { progress }); }, [progress]);
+  useEffect(() => { inputRef.current?.focus(); }, [prompt]);
 
   const submit = useCallback(() => {
-    if (!word) return;
+    if (!prompt) return;
     if (result) { deal(); return; }
     const typed = value.trim();
     if (!typed) return;
 
-    lastIdRef.current = word.id;
-    const verdict = judgeArticle(typed, word);
+    lastIdRef.current = prompt.id;
+    const verdict = judgeAdjective(typed, prompt);
     const correct = Boolean(verdict);
 
     const p = progressRef.current;
@@ -89,23 +90,22 @@ export function useArticle() {
       correct,
       completed,
       typed,
-      forgiven: verdict?.forgiven ? verdict : null,
-      diagnosis: correct ? null : diagnose(typed, word),
-      diffAt: correct ? -1 : firstDifference(typed, word.def),
+      forgiven: verdict?.forgiven ?? null,
+      diagnosis: correct ? null : diagnose(typed, prompt),
     });
-  }, [word, result, value, deal, showResult]);
+  }, [prompt, result, value, deal, showResult]);
 
   const reveal = useCallback(() => {
-    if (!word || result) return;
-    lastIdRef.current = word.id;
+    if (!prompt || result) return;
+    lastIdRef.current = prompt.id;
     const p = progressRef.current;
     const broken = syllabus.breakStreak(p);
     if (broken !== p) {
       progressRef.current = broken;
       setProgress(broken);
     }
-    showResult({ correct: false, revealed: true, typed: "", diagnosis: null, diffAt: -1 });
-  }, [word, result, showResult]);
+    showResult({ correct: false, revealed: true, typed: "", diagnosis: null });
+  }, [prompt, result, showResult]);
 
   const next = useCallback(() => { if (result) deal(); }, [result, deal]);
 
@@ -130,7 +130,7 @@ export function useArticle() {
     progressRef.current = updated;
     setProgress(updated);
     lastIdRef.current = null;
-    deal(stepId === MIXED ? ALL_WORDS : wordsForLesson(stepId));
+    deal(stepId === MIXED ? ALL_PROMPTS : promptsForLesson(stepId));
   }, [deal]);
 
   const resetAll = useCallback(() => {
@@ -139,7 +139,7 @@ export function useArticle() {
     progressRef.current = fresh;
     setProgress(fresh);
     lastIdRef.current = null;
-    deal(wordsForLesson(fresh.stepId));
+    deal(promptsForLesson(fresh.stepId));
   }, [deal]);
 
   /* Enter moves on once a verdict is up, for when focus has left the field. */
@@ -155,11 +155,12 @@ export function useArticle() {
   }, [deal]);
 
   return {
-    word, lesson, value, setValue, result, progress, showTable, setShowTable,
+    prompt, lesson, value, setValue, result, progress,
     inputRef, submit, reveal, next, insert, goToLesson, resetAll,
     isMixed: progress.stepId === MIXED,
     target: lesson?.streak ?? 0,
     frontier: syllabus.frontierOf(progress.done),
     revising: syllabus.isRevising(progress),
+    canonical,
   };
 }
