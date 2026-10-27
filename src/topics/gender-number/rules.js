@@ -59,8 +59,6 @@ export const ERRORS = {
   keptHe: "The final ה is dropped before the ending.",
   wrongEnding: "Right stem, wrong ending.",
   keptHeFeminine: "The ה of the singular ending is replaced, not kept.",
-  doubleYod:
-    "A reasonable guess — but the ending's î is written without its own yod when the root already ends in one.",
 };
 
 /* ---------------------------------------------------------------- the rules --
@@ -83,13 +81,6 @@ export const RULES = [
         errors: [{ form: "סוּסוֹת", why: "wrongEnding" }] },
       { he: "אוֹר", tr: "ʾôr", gloss: "light", target: "masculine plural", answer: "אוֹרִים", answerTr: "ʾôrîm",
         errors: [{ form: "אוֹרוֹת", why: "wrongEnding" }] },
-      { he: "גּוֹי", tr: "gôy", gloss: "nation", target: "masculine plural", answer: "גּוֹיִם", answerTr: "gôyim",
-        hint: "The root already ends in a yod — don't write a second one for the ending.",
-        note: "You would expect גּוֹיִים, with one yod closing the root and another carrying the ending's î. Only one is written. BDB records the fuller spelling as a Ketiv at Psalm 79:10, which is the tell that this is a spelling convention and not a different form.",
-        errors: [
-          { form: "גּוֹיוֹת", why: "wrongEnding" },
-          { form: "גּוֹיִים", why: "doubleYod" },
-        ] },
       { he: "שִׁיר", tr: "šîr", gloss: "song", target: "masculine plural", answer: "שִׁירִים", answerTr: "šîrîm",
         errors: [{ form: "שִׁירוֹת", why: "wrongEnding" }] },
       { he: "צַדִּיק", tr: "ṣaddîq", gloss: "righteous one", target: "masculine plural", answer: "צַדִּיקִים", answerTr: "ṣaddîqîm",

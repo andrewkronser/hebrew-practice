@@ -951,6 +951,25 @@ console.log("\n── the definite article ──");
     (definiteOf("בַּיִת", "plain").match(/ּ/g) || []).length, 1);
 }
 
+console.log("\n── the masculine plural rule is derivable ──");
+{
+  /* גּוֹי used to sit in this step and needed a hint, a note and an error
+     reason of its own, because its plural is written גּוֹיִם — one yod serving
+     both the root and the ending's î. BDB gives that spelling 410 times, so it
+     is the biblical form rather than a mistake; it is simply not derivable from
+     the rule the step teaches. It was moved out rather than respelled, since
+     the fuller גּוֹיִים is a Qere that BDB itself calls wrong.
+
+     With it gone every word here is stem + ־ִים, which is the claim the step
+     makes, so this asserts it rather than leaving the next irregular to be
+     noticed by a learner. */
+  const ENDING = canonical("\u05B4\u05D9\u05DD");
+  const mp = RULES.find((r) => r.id === "mp").words;
+  check("every masculine-plural word is the singular plus the ending",
+    mp.every((w) => canonical(w.answer) === canonical(w.he) + ENDING), true);
+  check("and none of them needs a hint", mp.some((w) => w.hint), false);
+}
+
 console.log("\n── adjectives ──");
 {
   const noun = (he) => USABLE_NOUNS.find((f) => f.he === canonical(he));

@@ -89,31 +89,6 @@ click(btn("Next"));
 await settle();
 
 
-console.log("\n── a word with a spelling hint ──");
-/* גוי is the one word whose correct spelling can't be derived from the rule:
-   the ending's yod is not written because the root already ends in one. */
-const goy = ALL_PROMPTS.find((p) => p.hint);
-/* Cycle with "Show answer" rather than answering correctly: five right answers
-   would complete rule 1 and carry us past the word we are looking for. */
-let found = false;
-for (let i = 0; i < 40 && !found; i++) {
-  if (currentPrompt()?.id === goy.id) { found = true; break; }
-  click(btn("Show answer"));
-  await settle();
-  click(btn("Next"));
-  await settle();
-}
-check("reached the word with a hint", found, true);
-check("hint is shown before answering", rendered().includes("don't write a second one"), true);
-/* Typing the form you would expect should be diagnosed, not just rejected. */
-setVal(field(), goy.errors.find((e) => e.why === "doubleYod").form);
-enter(field());
-await settle();
-check("the expected-but-wrong spelling is caught", rendered().includes("Not quite"), true);
-check("and explained", rendered().includes("without its own yod"), true);
-click(btn("Next"));
-await settle();
-
 console.log("\n── forgiven typos ──");
 /* A dropped dagesh and a final/medial mix-up earn the point but are named.
    Cycling with "Show answer" leaves the streak at 0, so the increment below
